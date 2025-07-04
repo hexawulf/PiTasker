@@ -92,3 +92,10 @@ export const showTaskNotification = (taskName: string, status: 'success' | 'fail
   
   showBrowserNotification(title, body);
 };
+
+// Overloaded function to handle string status from API
+export const showTaskNotificationFromAPI = (taskName: string, status: string, timestamp?: string) => {
+  if (status === 'success' || status === 'failed' || status === 'running') {
+    showTaskNotification(taskName, status, timestamp);
+  }
+};

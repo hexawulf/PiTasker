@@ -11,9 +11,20 @@ const taskRunner = new TaskRunner();
 const notificationService = new NotificationService();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check endpoint
+  // Enhanced health check endpoint with uptime
   app.get("/health", (req, res) => {
-    res.json({ status: "healthy", timestamp: new Date().toISOString() });
+    const uptime = process.uptime() * 1000; // Convert to milliseconds
+    res.json({ 
+      status: "ok", 
+      uptime: `${Math.floor(uptime)}ms`,
+      timestamp: new Date().toISOString(),
+      nodeVersion: process.version,
+      memoryUsage: {
+        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`
+      }
+    });
   });
 
   // Get task statistics (moved before specific ID routes)

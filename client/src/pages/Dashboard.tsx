@@ -4,11 +4,14 @@ import StatsCards from "@/components/StatsCards";
 import TaskForm from "@/components/TaskForm";
 import TaskList from "@/components/TaskList";
 import QuickActions from "@/components/QuickActions";
-import { requestNotificationPermission, setupNotificationListener, showBrowserNotification } from "@/lib/firebase";
+import SystemMonitor from "@/components/SystemMonitor";
+import { requestNotificationPermission, setupNotificationListener, showTaskNotification } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useTasks } from "@/hooks/useTasks";
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { data: tasks } = useTasks();
 
   useEffect(() => {
     // Request notification permission on component mount
@@ -18,7 +21,7 @@ export default function Dashboard() {
     setupNotificationListener((payload) => {
       const { title, body } = payload.notification || {};
       if (title && body) {
-        showBrowserNotification(title, body);
+        showTaskNotification(title, 'success');
         toast({
           title,
           description: body,
@@ -26,6 +29,27 @@ export default function Dashboard() {
       }
     });
   }, [toast]);
+
+  // Monitor task status changes for notifications
+  useEffect(() => {
+    if (tasks) {
+      const completedTasks = tasks.filter(task => 
+        (task.status === 'success' || task.status === 'failed') && 
+        task.lastRun && 
+        new Date(task.lastRun).getTime() > Date.now() - 10000 // Last 10 seconds
+      );
+
+      completedTasks.forEach(task => {
+        const timestamp = task.lastRun ? new Date(task.lastRun).toISOString() : undefined;
+        showTaskNotification(task.name, task.status as 'success' | 'failed', timestamp);
+        toast({
+          title: `Task ${task.status === 'success' ? 'Completed' : 'Failed'}`,
+          description: `"${task.name}" ${task.status === 'success' ? 'completed successfully' : 'failed to execute'}`,
+          variant: task.status === 'success' ? 'default' : 'destructive',
+        });
+      });
+    }
+  }, [tasks, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -71,6 +95,7 @@ export default function Dashboard() {
           <div className="lg:col-span-1 space-y-6">
             <TaskForm />
             <QuickActions />
+            <SystemMonitor />
           </div>
 
           {/* Task List */}
