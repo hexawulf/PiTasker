@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { isValidCron } from "cron-validator";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -24,52 +25,43 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-// Custom cron validation function
-const validateCron = (cron: string): boolean => {
-  // Basic cron format: minute hour day month weekday
-  const cronParts = cron.trim().split(/\s+/);
-  if (cronParts.length !== 5) return false;
-  
-  const [minute, hour, day, month, weekday] = cronParts;
-  
-  // Validate each field
-  const validateField = (value: string, min: number, max: number): boolean => {
-    if (value === '*') return true;
-    if (value.includes('/')) {
-      const [range, step] = value.split('/');
-      if (range === '*') return !isNaN(parseInt(step)) && parseInt(step) > 0;
-      return validateField(range, min, max) && !isNaN(parseInt(step));
-    }
-    if (value.includes('-')) {
-      const [start, end] = value.split('-');
-      return !isNaN(parseInt(start)) && !isNaN(parseInt(end)) && 
-             parseInt(start) >= min && parseInt(end) <= max && parseInt(start) <= parseInt(end);
-    }
-    if (value.includes(',')) {
-      return value.split(',').every(v => validateField(v, min, max));
-    }
-    const num = parseInt(value);
-    return !isNaN(num) && num >= min && num <= max;
-  };
-  
-  return validateField(minute, 0, 59) && 
-         validateField(hour, 0, 23) && 
-         validateField(day, 1, 31) && 
-         validateField(month, 1, 12) && 
-         validateField(weekday, 0, 7); // 0 and 7 both represent Sunday
-};
-
-export const insertTaskSchema = createInsertSchema(tasks).pick({
-  name: true,
-  cronSchedule: true,
-  command: true,
-}).extend({
-  name: z.string().min(1, "Task name is required").max(100, "Task name too long"),
-  cronSchedule: z.string().refine(validateCron, {
-    message: "Invalid cron format. Use: minute hour day month weekday (e.g., '0 2 * * *')"
-  }),
-  command: z.string().min(1, "Command is required"),
+// Enhanced task validation schema with cron-validator
+const taskValidationSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Task name is required")
+    .max(100, "Task name must be less than 100 characters")
+    .trim(),
+  cronSchedule: z
+    .string()
+    .min(9, "Cron expression is required")
+    .refine(
+      (val) => {
+        try {
+          return isValidCron(val, { 
+            seconds: false,
+            alias: true,
+            allowBlankDay: true 
+          });
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid cron expression (format: minute hour day month weekday)" }
+    ),
+  command: z
+    .string()
+    .min(1, "Shell command is required")
+    .max(500, "Command must be less than 500 characters")
+    .trim()
+    .refine(
+      (val) => val.length > 0,
+      { message: "Command cannot be empty or only whitespace" }
+    )
 });
+
+// Export the enhanced validation schema as insertTaskSchema
+export const insertTaskSchema = taskValidationSchema;
 
 export const updateTaskSchema = insertTaskSchema.partial().extend({
   status: z.enum(["pending", "running", "success", "failed"]).optional(),

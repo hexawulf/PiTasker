@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, PlusCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, PlusCircle, Clock, Terminal, AlertCircle } from "lucide-react";
 import { insertTaskSchema, type InsertTask } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -40,11 +41,30 @@ export default function TaskForm() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create task",
-        variant: "destructive",
-      });
+      console.error("Task creation error:", error);
+      
+      // Handle validation errors from server
+      if (error?.response?.status === 400 && error?.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        validationErrors.forEach((err: any) => {
+          if (err.path && err.path.length > 0) {
+            form.setError(err.path[0] as keyof InsertTask, {
+              message: err.message
+            });
+          }
+        });
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to create task. Please check your inputs and try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -95,9 +115,18 @@ export default function TaskForm() {
                     />
                   </FormControl>
                   <FormDescription className="text-gray-500 dark:text-gray-400">
-                    Format: minute hour day month weekday
-                    <br />
-                    <span className="text-xs">Examples: "0 2 * * *" (daily 2AM), "*/15 * * * *" (every 15min), "0 0 * * 1" (weekly Monday)</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-3 w-3" />
+                        <span className="text-xs font-medium">Format: minute hour day month weekday</span>
+                      </div>
+                      <div className="text-xs space-y-1">
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">0 2 * * *</code> = Daily at 2:00 AM</div>
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">*/15 * * * *</code> = Every 15 minutes</div>
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">0 0 * * 1</code> = Weekly on Monday at midnight</div>
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">30 6 1 * *</code> = Monthly on 1st at 6:30 AM</div>
+                      </div>
+                    </div>
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -113,11 +142,24 @@ export default function TaskForm() {
                   <FormControl>
                     <Textarea 
                       rows={3}
-                      placeholder="pg_dump mydb > backup_$(date +%Y%m%d).sql" 
+                      placeholder="echo 'Hello Pi' > /tmp/hello.txt" 
                       className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono"
                       {...field} 
                     />
                   </FormControl>
+                  <FormDescription className="text-gray-500 dark:text-gray-400">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Terminal className="h-3 w-3" />
+                        <span className="text-xs font-medium">Pi Examples:</span>
+                      </div>
+                      <div className="text-xs space-y-1">
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">vcgencmd measure_temp {'>>'} /var/log/pi-temp.log</code></div>
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">tar -czf /backup/$(date +%Y%m%d).tar.gz /home/pi</code></div>
+                        <div><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">find /tmp -type f -atime +7 -delete</code></div>
+                      </div>
+                    </div>
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
