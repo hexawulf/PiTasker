@@ -88,7 +88,7 @@ sudo ufw allow 'Nginx Full'
 ```bash
 # Clone the repository
 cd /home/$USER
-git clone https://github.com/yourusername/pitasker.git
+git clone https://github.com/hexawulf/pitasker.git
 cd pitasker
 
 # Install dependencies
