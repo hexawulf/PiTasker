@@ -107,7 +107,7 @@ curl -X POST https://pitasker.piapps.dev/api/tasks \
 
 ## 📞 Support Information
 
-- **GitHub Repository**: https://github.com/yourusername/pitasker
+- **GitHub Repository**: https://github.com/hexawulf/pitasker
 - **Installation Guide**: INSTALLATION.md
 - **Memory Monitoring**: Access `/api/memory` endpoint locally
 - **Logs**: `pm2 logs pitasker` for application logs
