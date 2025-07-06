@@ -55,7 +55,7 @@ const startServer = async () => {
   // Register backend routes
   await registerRoutes(app);
 
-  // Serve static frontend (works with Vite or CRA build)
+// Serve static frontend (works with Vite or CRA build)
   const rootDir = path.resolve(__dirname, '..');
   const candidateDirs = [
     path.join(__dirname, 'public'), // dist/public when bundled
