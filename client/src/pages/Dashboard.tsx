@@ -22,7 +22,9 @@ import { useTasks } from "@/hooks/useTasks";
 export default function Dashboard() {
   const { toast } = useToast();
   const { data: tasks } = useTasks();
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
+  navigate("/dashboard");
+
 
   const handleLogout = async () => {
     try {
