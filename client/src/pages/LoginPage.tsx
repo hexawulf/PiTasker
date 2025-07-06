@@ -11,7 +11,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const { toast } = useToast(); // For displaying success/error messages
 
   const handleSubmit = async (event: FormEvent) => {
