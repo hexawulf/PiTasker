@@ -56,10 +56,11 @@ const startServer = async () => {
   await registerRoutes(app);
 
   // Serve static frontend (works with Vite or CRA build)
+  const rootDir = path.resolve(__dirname, '..');
   const candidateDirs = [
-    path.join(__dirname, 'public'),
-    path.join(__dirname, '..', 'client', 'dist'),
-    path.join(__dirname, '..', 'client', 'build'),
+    path.join(__dirname, 'public'), // dist/public when bundled
+    path.join(rootDir, 'client', 'dist'),
+    path.join(rootDir, 'client', 'build'),
   ];
   const staticDir = candidateDirs.find((dir) =>
     fs.existsSync(path.join(dir, 'index.html')),
