@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Plus, ListTodo, Moon, Bell, User, LogOut, KeyRound } from "lucide-react"; // Added User, LogOut, KeyRound
-import { useNavigate, Link } from "wouter"; // Added Link and useNavigate
+import { useLocation, Link } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
