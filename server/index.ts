@@ -3,9 +3,13 @@ import cors from 'cors';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import path from 'path';
-import routes from './routes'; // Adjust if your routes are nested differently
+import { fileURLToPath } from 'url';
+import { registerRoutes } from './routes'; // <- Correct import!
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -42,19 +46,25 @@ app.use(
   })
 );
 
-// Mount backend API routes
-app.use('/api', routes);
+const startServer = async () => {
+  // Register backend routes with access to app
+  await registerRoutes(app);
 
-// Serve frontend if you're doing SSR or have static assets
-const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientBuildPath));
+  // Serve frontend (Vite static assets)
+  const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientBuildPath));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
 
-// Start the server
-const PORT = process.env.PORT || 5007;
-app.listen(PORT, () => {
-  console.log(`[express] PiTasker backend running on port ${PORT}`);
+  const PORT = process.env.PORT || 5007;
+  app.listen(PORT, () => {
+    console.log(`[express] PiTasker backend running on port ${PORT}`);
+  });
+};
+
+// Start the server (wrap in top-level await if needed in ESM)
+startServer().catch((err) => {
+  console.error('[server] Failed to start:', err);
 });
