@@ -1,5 +1,4 @@
 import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { findUserByUsername, findUserById, comparePassword, updateUserPassword, hashPassword } from "./auth"; // Added findUserById
 import { isAuthenticated } from "./middleware/authMiddleware";
@@ -19,7 +18,7 @@ const taskScheduler = new TaskScheduler();
 const taskRunner = new TaskRunner();
 const notificationService = new NotificationService();
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   // Enhanced health check endpoint with uptime
   app.get("/health", (req, res) => {
     const uptime = process.uptime() * 1000; // Convert to milliseconds
@@ -306,7 +305,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize tasks on startup
   initializeTasks();
-
-  const httpServer = createServer(app);
-  return httpServer;
 }
