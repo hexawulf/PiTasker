@@ -1,5 +1,15 @@
 import { useEffect } from "react";
-import { Plus, ListTodo, Moon, Bell } from "lucide-react";
+import { Plus, ListTodo, Moon, Bell, User, LogOut, KeyRound } from "lucide-react"; // Added User, LogOut, KeyRound
+import { useNavigate, Link } from "wouter"; // Added Link and useNavigate
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Added DropdownMenu components
+import { Button } from "@/components/ui/button"; // Added Button for DropdownMenuTrigger
 import StatsCards from "@/components/StatsCards";
 import TaskForm from "@/components/TaskForm";
 import TaskList from "@/components/TaskList";
@@ -12,6 +22,23 @@ import { useTasks } from "@/hooks/useTasks";
 export default function Dashboard() {
   const { toast } = useToast();
   const { data: tasks } = useTasks();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/logout', { method: 'GET' });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.removeItem('isAuthenticated'); // Clear auth flag
+        toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+        navigate(data.redirectTo || '/login');
+      } else {
+        toast({ title: 'Logout Failed', description: data.message || 'Could not log out.', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Logout request failed.', variant: 'destructive' });
+    }
+  };
 
   useEffect(() => {
     // Request notification permission on component mount
@@ -80,6 +107,33 @@ export default function Dashboard() {
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs"></span>
               </button>
+
+              {/* User Dropdown Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0 hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal text-gray-900 dark:text-white">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">Admin</p> {/* Username can be dynamic later */}
+                      <p className="text-xs leading-none text-gray-500 dark:text-gray-400">admin@example.com</p> {/* Email can be dynamic or removed */}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                  <DropdownMenuItem className="text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" onSelect={() => navigate('/change-password')}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    <span>Change Password</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700"/>
+                  <DropdownMenuItem className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer focus:bg-red-100 dark:focus:bg-red-800" onSelect={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
