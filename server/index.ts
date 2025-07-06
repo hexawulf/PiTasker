@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import dotenv from "dotenv";
+import cors from "cors";
 import { pool } from "./db"; // Assuming db.ts exports 'pool' for connect-pg-simple
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -10,6 +11,15 @@ import { setupMemoryOptimization } from "./middleware/memoryOptimization";
 dotenv.config();
 
 const app = express();
+
+// CORS middleware - place before session and routes
+app.use(
+  cors({
+    origin: "https://pitasker.piapps.dev",
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -29,6 +39,7 @@ app.use(
       secure: process.env.NODE_ENV === "production", // True if using https
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      sameSite: "lax", // Added for cross-site cookie sending
     },
   }),
 );
