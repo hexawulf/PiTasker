@@ -1,6 +1,14 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { findUserByUsername, findUserById, comparePassword, updateUserPassword, hashPassword } from "./auth"; // Added findUserById
+import { isAuthenticated } from "./middleware/authMiddleware";
+import type session from 'express-session';
+
+// Define a custom type for the session data to include userId
+interface AuthenticatedSession extends session.Session {
+  userId?: number;
+}
 import { insertTaskSchema, updateTaskSchema } from "@shared/schema";
 import { TaskScheduler } from "./services/taskScheduler";
 import { TaskRunner } from "./services/taskRunner";
@@ -27,8 +35,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Authentication Routes
+  app.post("/login", async (req: Request, res: Response) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required." });
+    }
+
+    try {
+      const user = await findUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid username or password." });
+      }
+
+      const isPasswordValid = await comparePassword(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Invalid username or password." });
+      }
+
+      // Store user ID in session
+      const session = req.session as AuthenticatedSession;
+      session.userId = user.id;
+
+      return res.status(200).json({ message: "Login successful.", redirectTo: "/dashboard" });
+    } catch (error) {
+      console.error("Login error:", error);
+      return res.status(500).json({ message: "Internal server error during login." });
+    }
+  });
+
+  app.get("/logout", (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Could not log out, please try again." });
+      }
+      res.clearCookie("connect.sid"); // Default session cookie name, adjust if different
+      return res.status(200).json({ message: "Logout successful.", redirectTo: "/login" });
+    });
+  });
+
+  app.post("/change-password", isAuthenticated, async (req: Request, res: Response) => {
+    const { currentPassword, newPassword, confirmNewPassword } = req.body;
+    const session = req.session as AuthenticatedSession;
+    const userId = session.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated." });
+    }
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({ message: "All password fields are required." });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ message: "New passwords do not match." });
+    }
+
+    // Basic password policy (example: min 8 chars)
+    if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long." });
+    }
+    // Add more complex policy checks if needed (e.g., uppercase, number, special char)
+
+
+    try {
+      const user = await findUserById(userId);
+      if (!user) {
+        // This case should ideally not happen if session is valid and user exists
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(401).json({ message: "Incorrect current password." });
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+      await updateUserPassword(userId, newPasswordHash);
+
+      return res.status(200).json({ message: "Password changed successfully." });
+    } catch (error) {
+      console.error("Change password error:", error);
+      return res.status(500).json({ message: "Internal server error during password change." });
+    }
+  });
+
+
+  // API Routes (Protected by isAuthenticated middleware)
   // Get task statistics (moved before specific ID routes)
-  app.get("/api/tasks/stats", async (req, res) => {
+  app.get("/api/tasks/stats", isAuthenticated, async (req, res) => {
     try {
       const tasks = await storage.getAllTasks();
       const stats = {
@@ -46,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all tasks
-  app.get("/api/tasks", async (req, res) => {
+  app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
       const tasks = await storage.getAllTasks();
       res.json(tasks);
@@ -57,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get task by ID
-  app.get("/api/tasks/:id", async (req, res) => {
+  app.get("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -77,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new task
-  app.post("/api/tasks", async (req, res) => {
+  app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
       const validation = insertTaskSchema.safeParse(req.body);
       if (!validation.success) {
@@ -100,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update task
-  app.patch("/api/tasks/:id", async (req, res) => {
+  app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -139,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete task
-  app.delete("/api/tasks/:id", async (req, res) => {
+  app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -162,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Run task manually
-  app.post("/api/tasks/:id/run", async (req, res) => {
+  app.post("/api/tasks/:id/run", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
