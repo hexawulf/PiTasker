@@ -68,7 +68,7 @@ const formatCronDescription = (cron: string) => {
   return patterns[cron] || "Custom schedule";
 };
 
-const formatLastRun = (lastRun: string | null) => {
+const formatLastRun = (lastRun: string | Date | null) => {
   if (!lastRun) return "Never";
   
   const date = new Date(lastRun);

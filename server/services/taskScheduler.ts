@@ -1,9 +1,9 @@
-import cron from "node-cron";
+import { schedule, validate, ScheduledTask } from "node-cron";
 import { Task } from "@shared/schema";
 import { TaskRunner } from "./taskRunner";
 
 export class TaskScheduler {
-  private scheduledTasks: Map<number, cron.ScheduledTask> = new Map();
+  private scheduledTasks: Map<number, ScheduledTask> = new Map();
   private taskRunner: TaskRunner;
 
   constructor() {
@@ -13,7 +13,7 @@ export class TaskScheduler {
   scheduleTask(task: Task): void {
     try {
       // Validate cron expression
-      if (!cron.validate(task.cronSchedule)) {
+      if (!validate(task.cronSchedule)) {
         console.error(`Invalid cron schedule for task ${task.id}: ${task.cronSchedule}`);
         return;
       }
@@ -22,11 +22,10 @@ export class TaskScheduler {
       this.unscheduleTask(task.id);
 
       // Schedule new task
-      const scheduledTask = cron.schedule(task.cronSchedule, () => {
+      const scheduledTask = schedule(task.cronSchedule, () => {
         console.log(`Running scheduled task: ${task.name} (ID: ${task.id})`);
         this.taskRunner.runTask(task);
       }, {
-        scheduled: true,
         timezone: "UTC"
       });
 

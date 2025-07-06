@@ -4,11 +4,12 @@ import type session from 'express-session';
 // Define a custom type for the session data
 interface AuthenticatedSession extends session.Session {
     userId?: number;
+    user?: { id: number; username: string };
 }
 
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
     const session = req.session as AuthenticatedSession;
-    if (session && session.userId) {
+    if (session && (session.user?.id || session.userId)) {
         return next();
     }
     // If client expects JSON (API routes), send 401 JSON
