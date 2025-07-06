@@ -87,7 +87,7 @@ app.use((req, res, next) => {
   }
 
 // Use custom port 5007 for PiTasker
-const port = 5007;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 5007;
 
   server.listen({
     port,
