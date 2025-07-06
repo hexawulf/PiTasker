@@ -39,7 +39,7 @@ app.use(
       secure: process.env.NODE_ENV === "production", // True if using https
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-      sameSite: "lax", // Added for cross-site cookie sending
+      sameSite: "none", // allow sending cookies cross-site
     },
   }),
 );

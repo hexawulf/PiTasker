@@ -8,6 +8,7 @@ import type session from 'express-session';
 // Define a custom type for the session data to include userId
 interface AuthenticatedSession extends session.Session {
   userId?: number;
+  user?: { id: number; username: string };
 }
 import { insertTaskSchema, updateTaskSchema } from "@shared/schema";
 import { TaskScheduler } from "./services/taskScheduler";
@@ -54,9 +55,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid username or password." });
       }
 
-      // Store user ID in session
+      // Store user info in session
       const session = req.session as AuthenticatedSession;
       session.userId = user.id;
+      session.user = { id: user.id, username: user.username };
 
       return res.status(200).json({ message: "Login successful.", redirectTo: "/dashboard" });
     } catch (error) {
@@ -79,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/change-password", isAuthenticated, async (req: Request, res: Response) => {
     const { currentPassword, newPassword, confirmNewPassword } = req.body;
     const session = req.session as AuthenticatedSession;
-    const userId = session.userId;
+    const userId = session.user?.id || session.userId;
 
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated." });
