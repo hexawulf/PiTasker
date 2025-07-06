@@ -1,110 +1,60 @@
-import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import dotenv from "dotenv";
-import cors from "cors";
-import { pool } from "./db"; // Assuming db.ts exports 'pool' for connect-pg-simple
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { setupMemoryOptimization } from "./middleware/memoryOptimization";
+import express from 'express';
+import cors from 'cors';
+import session from 'express-session';
+import dotenv from 'dotenv';
+import path from 'path';
+import routes from './routes'; // Adjust if your routes are nested differently
 
 dotenv.config();
 
 const app = express();
 
-// CORS middleware - place before session and routes
+// Trust reverse proxy (e.g., Nginx, Cloudflare) to support secure cookies
+app.set('trust proxy', 1);
+
+// CORS configuration to allow frontend to send cookies
 app.use(
   cors({
-    origin: "https://pitasker.piapps.dev",
+    origin: 'https://pitasker.piapps.dev', // <-- Replace with your frontend origin
     credentials: true,
-  }),
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
 );
 
+// Body parsers for JSON and URL-encoded data
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 
 // Session middleware
-const PgStore = connectPgSimple(session);
 app.use(
   session({
-    store: new PgStore({
-      pool: pool, // Use the pool from db.ts
-      tableName: "user_sessions", // Name of the session table
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET || "your-default-session-secret", // Replace with a strong secret
+    name: 'pitasker.sid',
+    secret: process.env.SESSION_SECRET || 'replace_this_with_a_strong_secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // True if using https
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-      sameSite: "none", // allow sending cookies cross-site
+      secure: true,       // Required for HTTPS
+      sameSite: 'none',   // Required for cross-site cookies
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
-  }),
+  })
 );
 
-// Setup memory optimization for Pi deployment
-setupMemoryOptimization(app);
+// Mount backend API routes
+app.use('/api', routes);
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Serve frontend if you're doing SSR or have static assets
+const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientBuildPath));
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
-(async () => {
-  const server = await registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-// Use custom port 5007 for PiTasker
-const port = process.env.PORT ? parseInt(process.env.PORT) : 5007;
-
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();
+// Start the server
+const PORT = process.env.PORT || 5007;
+app.listen(PORT, () => {
+  console.log(`[express] PiTasker backend running on port ${PORT}`);
+});
