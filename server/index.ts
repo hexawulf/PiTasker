@@ -4,7 +4,7 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { registerRoutes } from './routes'; // <- Correct import!
+import { registerRoutes } from './routes';
 
 dotenv.config();
 
@@ -13,20 +13,20 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Trust reverse proxy (e.g., Nginx, Cloudflare) to support secure cookies
+// Trust reverse proxy (e.g., Nginx, Cloudflare)
 app.set('trust proxy', 1);
 
-// CORS configuration to allow frontend to send cookies
+// CORS setup for frontend origin
 app.use(
   cors({
-    origin: 'https://pitasker.piapps.dev', // <-- Replace with your frontend origin
+    origin: 'https://pitasker.piapps.dev',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-// Body parsers for JSON and URL-encoded data
+// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -39,19 +39,19 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,       // Required for HTTPS
-      sameSite: 'none',   // Required for cross-site cookies
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      secure: true,
+      sameSite: 'none',
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
 
 const startServer = async () => {
-  // Register backend routes with access to app
+  // Register backend routes
   await registerRoutes(app);
 
-  // Serve frontend (Vite static assets)
-  const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+  // Serve static frontend (assumes Create React App)
+  const clientBuildPath = path.join(__dirname, '..', 'client', 'build');
   app.use(express.static(clientBuildPath));
 
   app.get('*', (req, res) => {
@@ -64,7 +64,6 @@ const startServer = async () => {
   });
 };
 
-// Start the server (wrap in top-level await if needed in ESM)
 startServer().catch((err) => {
   console.error('[server] Failed to start:', err);
 });
