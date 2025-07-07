@@ -123,7 +123,7 @@ The application uses two main tables:
 - `GET /api/memory` - Detailed memory monitoring
 - `GET /api/tasks` - List all tasks
 - `POST /api/tasks` - Create new task
-- `PUT /api/tasks/:id` - Update task
+- `PATCH /api/tasks/:id` - Update task (partial updates)
 - `DELETE /api/tasks/:id` - Delete task
 - `POST /api/tasks/:id/run` - Manual task execution
 - `GET /api/tasks/stats` - Task statistics
