@@ -13,6 +13,7 @@ import { insertTaskSchema, updateTaskSchema } from "@shared/schema";
 import { TaskScheduler } from "./services/taskScheduler";
 import { TaskRunner } from "./services/taskRunner";
 import { NotificationService } from "./services/notificationService";
+import { validateCron } from "./utils/validateCron";
 
 const taskScheduler = new TaskScheduler();
 const taskRunner = new TaskRunner();
@@ -284,6 +285,52 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error("Error running task:", error);
       res.status(500).json({ message: "Failed to run task" });
     }
+  });
+
+  // Import multiple cronjobs from JSON
+  app.post("/api/import-cronjobs", isAuthenticated, async (req, res) => {
+    if (!Array.isArray(req.body)) {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+
+    let imported = 0;
+    let failed = 0;
+
+    for (const [index, job] of req.body.entries()) {
+      const { name, schedule, command } = job || {};
+      if (!name || !schedule || !command) {
+        console.error(`Import error at index ${index}: missing fields`);
+        failed++;
+        continue;
+      }
+
+      if (typeof command !== "string" || command.length > 1024) {
+        console.error(`Import error at index ${index}: command too long`);
+        failed++;
+        continue;
+      }
+
+      if (!validateCron(schedule)) {
+        console.error(`Import error at index ${index}: invalid schedule`);
+        failed++;
+        continue;
+      }
+
+      try {
+        const newTask = await storage.createTask({
+          name,
+          cronSchedule: schedule,
+          command,
+        });
+        taskScheduler.scheduleTask(newTask);
+        imported++;
+      } catch (error) {
+        console.error(`Import error at index ${index}:`, error);
+        failed++;
+      }
+    }
+
+    res.status(200).json({ imported, failed });
   });
 
 
