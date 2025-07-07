@@ -3,6 +3,8 @@ import { storage } from "./storage";
 import { findUserByUsername, findUserById, comparePassword, updateUserPassword, hashPassword } from "./auth"; // Added findUserById
 import { isAuthenticated } from "./middleware/authMiddleware";
 import type session from 'express-session';
+import { execSync } from 'child_process';
+import os from 'os';
 
 // Define a custom type for the session data to include userId
 interface AuthenticatedSession extends session.Session {
@@ -141,6 +143,45 @@ export async function registerRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  // System statistics for dashboard
+  app.get("/api/system-stats", isAuthenticated, async (_req, res) => {
+    try {
+      // Uptime
+      const uptimeSeconds = os.uptime();
+      const days = Math.floor(uptimeSeconds / 86400);
+      const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+      const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+      const parts: string[] = [];
+      if (days) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+      if (hours) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
+      parts.push(`${minutes} min${minutes === 1 ? "" : "s"}`);
+      const uptime = parts.join(", ");
+
+      // CPU usage percentage
+      const cpuUsageCmd = "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'";
+      const cpuUsageStr = execSync(cpuUsageCmd).toString().trim();
+      const cpuUsage = parseFloat(cpuUsageStr) || 0;
+
+      // Memory usage percentage
+      const memCmd = "free | grep Mem | awk '{print $3/$2 * 100.0}'";
+      const memUsageStr = execSync(memCmd).toString().trim();
+      const memoryUsage = parseFloat(memUsageStr) || 0;
+
+      // CPU temperature in Celsius
+      let cpuTemperature = 0;
+      try {
+        const tempCmd = "sensors | grep -E 'temp1|CPU Temperature|Package id 0' | head -n 1 | awk '{for(i=1;i<=NF;i++) if ($i ~ /^[+0-9]/) print $i}' | tr -d '+°C'";
+        const tempStr = execSync(tempCmd).toString().trim();
+        cpuTemperature = parseFloat(tempStr) || 0;
+      } catch {}
+
+      res.json({ uptime, cpuUsage, memoryUsage, cpuTemperature });
+    } catch (error) {
+      console.error("Error fetching system stats:", error);
+      res.status(500).json({ message: "Failed to fetch system statistics" });
     }
   });
 
