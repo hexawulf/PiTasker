@@ -14,6 +14,7 @@ import StatsCards from "@/components/StatsCards";
 import TaskForm from "@/components/TaskForm";
 import TaskList from "@/components/TaskList";
 import QuickActions from "@/components/QuickActions";
+import ImportCronModal from "@/components/ImportCronModal";
 import SystemMonitor from "@/components/SystemMonitor";
 import { requestNotificationPermission, setupNotificationListener, showTaskNotification } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -151,6 +152,7 @@ export default function Dashboard() {
           <div className="lg:col-span-1 space-y-6">
             <TaskForm />
             <QuickActions />
+            <ImportCronModal />
             <SystemMonitor />
           </div>
 
