@@ -9,6 +9,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import EditTaskModal from "@/components/EditTaskModal";
 import type { Task } from "@shared/schema";
 
 const getStatusBadge = (status: string) => {
@@ -90,6 +91,8 @@ export default function TaskList() {
     task: null,
     action: 'run'
   });
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -152,6 +155,11 @@ export default function TaskList() {
 
   const handleDeleteTask = (task: Task) => {
     setConfirmModal({ isOpen: true, task, action: 'delete' });
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditTask(task);
+    setIsEditOpen(true);
   };
 
   const handleConfirmAction = () => {
@@ -253,6 +261,7 @@ export default function TaskList() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleEditTask(task)}
                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             <Edit className="h-4 w-4" />
@@ -283,6 +292,11 @@ export default function TaskList() {
         task={confirmModal.task}
         action={confirmModal.action}
         isLoading={runTaskMutation.isPending || deleteTaskMutation.isPending}
+      />
+      <EditTaskModal
+        isOpen={isEditOpen}
+        onClose={() => { setIsEditOpen(false); setEditTask(null); }}
+        task={editTask}
       />
     </>
   );
