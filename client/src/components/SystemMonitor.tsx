@@ -3,26 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Activity, Server, Clock } from "lucide-react";
 
-interface MemoryStats {
-  current: {
-    rss: string;
-    heapUsed: string;
-    heapTotal: string;
-    external: string;
-  };
-  peak: string;
+interface SystemStats {
   uptime: string;
-  target: string;
-  nodeVersion: string;
+  cpuUsage: number;
+  memoryUsage: number;
+  cpuTemperature: number;
 }
 
 export default function SystemMonitor() {
-  const { data: memoryStats, isLoading } = useQuery<MemoryStats>({
-    queryKey: ['/api/memory'],
+  const { data: stats, isLoading } = useQuery<SystemStats>({
+    queryKey: ['/api/system-stats'],
     refetchInterval: 30000, // Update every 30 seconds
   });
 
-  if (isLoading || !memoryStats) {
+  if (isLoading || !stats) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -36,8 +30,8 @@ export default function SystemMonitor() {
     );
   }
 
-  const isMemoryHigh = parseInt(memoryStats.current.rss) > 75;
-  const isMemoryWarning = parseInt(memoryStats.current.rss) > 85;
+  const isMemoryHigh = stats.memoryUsage > 75;
+  const isMemoryWarning = stats.memoryUsage > 85;
 
   return (
     <Card>
@@ -50,34 +44,29 @@ export default function SystemMonitor() {
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Activity className="h-3 w-3" />
-              <span className="text-xs font-medium">Memory Usage</span>
+              <span className="text-xs font-medium">CPU Usage</span>
             </div>
-            <div className="text-2xl font-bold flex items-center space-x-2">
-              <span>{memoryStats.current.rss}</span>
-              <Badge 
-                variant={isMemoryWarning ? "destructive" : isMemoryHigh ? "secondary" : "default"}
-                className="text-xs"
-              >
-                {memoryStats.target}
-              </Badge>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Heap: {memoryStats.current.heapUsed} / {memoryStats.current.heapTotal}
-            </div>
+            <div className="text-2xl font-bold">{stats.cpuUsage.toFixed(1)}%</div>
+            <div className="text-xs text-muted-foreground">Temp: {stats.cpuTemperature}°C</div>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Clock className="h-3 w-3" />
-              <span className="text-xs font-medium">System Info</span>
+              <span className="text-xs font-medium">Memory Usage</span>
             </div>
-            <div className="text-2xl font-bold">{memoryStats.uptime}</div>
-            <div className="text-xs text-muted-foreground">
-              Peak: {memoryStats.peak} | {memoryStats.nodeVersion}
+            <div className="text-2xl font-bold flex items-center space-x-2">
+              <span>{stats.memoryUsage.toFixed(1)}%</span>
+              <Badge
+                variant={isMemoryWarning ? "destructive" : isMemoryHigh ? "secondary" : "default"}
+                className="text-xs"
+              >
+                {stats.uptime}
+              </Badge>
             </div>
           </div>
         </div>
-        
+
         {isMemoryWarning && (
           <div className="mt-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
             ⚠️ Memory usage approaching limit. Consider restarting if performance degrades.
