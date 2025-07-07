@@ -29,11 +29,32 @@ export default function QuickActions() {
     });
   };
 
-  const handleExport = () => {
-    toast({
-      title: "Feature Coming Soon", 
-      description: "Export tasks functionality will be available in a future update.",
-    });
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/tasks/export', { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pitasker-tasks.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: 'Exported',
+        description: 'Tasks have been downloaded.'
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to export tasks',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRefresh = () => {

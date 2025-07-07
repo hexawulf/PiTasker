@@ -196,6 +196,36 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Export all tasks as downloadable JSON
+  app.get("/api/tasks/export", isAuthenticated, async (req, res) => {
+    try {
+      const tasks = await storage.getAllTasks();
+      const exportTasks = tasks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        schedule: t.cronSchedule,
+        command: t.command,
+        createdAt: t.createdAt,
+        updatedAt: (t as any).updatedAt ?? t.createdAt,
+      }));
+
+      const pretty = String(req.query.pretty) === "true";
+      const json = pretty
+        ? JSON.stringify(exportTasks, null, 2)
+        : JSON.stringify(exportTasks);
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="pitasker-tasks.json"'
+      );
+      res.send(json);
+    } catch (error) {
+      console.error("Error exporting tasks:", error);
+      res.status(500).json({ message: "Failed to export tasks" });
+    }
+  });
+
   // Get task by ID
   app.get("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
