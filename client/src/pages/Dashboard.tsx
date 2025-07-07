@@ -16,6 +16,7 @@ import TaskList from "@/components/TaskList";
 import QuickActions from "@/components/QuickActions";
 import ImportCronModal from "@/components/ImportCronModal";
 import SystemMonitor from "@/components/SystemMonitor";
+import AboutModal from "@/components/AboutModal";
 import { requestNotificationPermission, setupNotificationListener, showTaskNotification } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useTasks } from "@/hooks/useTasks";
@@ -98,14 +99,15 @@ export default function Dashboard() {
                 </nav>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-300">Connected</span>
-              </div>
-              <button className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md">
-                <Moon className="h-5 w-5" />
-              </button>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Connected</span>
+                </div>
+                <AboutModal />
+                <button className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md">
+                  <Moon className="h-5 w-5" />
+                </button>
               <button className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md relative">
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs"></span>
