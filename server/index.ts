@@ -11,6 +11,11 @@ import { pool } from './db';
 
 dotenv.config();
 
+if (!process.env.SESSION_SECRET) {
+  console.error("FATAL ERROR: SESSION_SECRET is not defined. Please set it in your environment variables.");
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,7 +44,7 @@ app.use(
   session({
     store: new PgSession({ pool }),
     name: 'pitasker.sid',
-    secret: process.env.SESSION_SECRET || 'replace_this_with_a_strong_secret',
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -74,7 +79,11 @@ const startServer = async () => {
     console.warn('[server] No frontend build directory found.');
   }
 
-  const PORT = process.env.PORT || 5007;
+  const PORT = process.env.PORT;
+  if (!PORT) {
+    console.error("FATAL ERROR: PORT is not defined. Please set it in your environment variables.");
+    process.exit(1);
+  }
   app.listen(PORT, () => {
     console.log(`[express] PiTasker backend running on port ${PORT}`);
   });

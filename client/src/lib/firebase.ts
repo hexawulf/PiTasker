@@ -3,13 +3,31 @@ import { getAuth } from "firebase/auth";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}.firebasestorage.app`,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "demo-app-id",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+// Ensure Firebase config values are present
+if (
+  !firebaseConfig.apiKey ||
+  !firebaseConfig.authDomain.includes(firebaseConfig.projectId!) || // Check if projectId is part of authDomain
+  !firebaseConfig.projectId ||
+  !firebaseConfig.storageBucket.includes(firebaseConfig.projectId!) || // Check if projectId is part of storageBucket
+  !firebaseConfig.messagingSenderId ||
+  !firebaseConfig.appId
+) {
+  console.error(
+    "Firebase configuration is missing or incomplete. " +
+    "Please ensure all VITE_FIREBASE_* environment variables are set."
+  );
+  // Potentially throw an error or render a specific UI component
+  // For now, we'll log an error and let the app attempt to initialize,
+  // which will likely fail gracefully or with Firebase-specific errors.
+}
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -36,13 +54,17 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
+      if (!import.meta.env.VITE_FIREBASE_VAPID_KEY) {
+        console.error("VITE_FIREBASE_VAPID_KEY is not set. Cannot get notification token.");
+        return null;
+      }
       const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || "demo-vapid-key"
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
       });
-      console.log('Notification token:', token);
+      // console.log('Notification token:', token); // Debug
       return token;
     } else {
-      console.log('Notification permission denied');
+      // console.log('Notification permission denied'); // Debug
       return null;
     }
   } catch (error) {
@@ -59,7 +81,7 @@ export const setupNotificationListener = (callback: (payload: any) => void) => {
 
   try {
     onMessage(messaging, (payload) => {
-      console.log('Message received:', payload);
+      // console.log('Message received:', payload); // Debug
       callback(payload);
     });
   } catch (error) {
