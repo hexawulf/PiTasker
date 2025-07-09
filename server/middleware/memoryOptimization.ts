@@ -28,7 +28,7 @@ export function setupMemoryOptimization(app: Express) {
 
     // Force garbage collection if memory is high (Node.js with --expose-gc)
     if (rss > 85 && global.gc) {
-      console.log(`[GC] Forcing garbage collection at ${rss}MB`);
+      // console.log(`[GC] Forcing garbage collection at ${rss}MB`); // Debug
       global.gc();
     }
   };
