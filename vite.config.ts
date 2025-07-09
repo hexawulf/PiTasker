@@ -27,6 +27,10 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  // Ensure .env variables from the repository root are available when
+  // building the client. Without this, Vite would only load environment
+  // files from the `client` directory and ignore `.env` in the project root.
+  envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
