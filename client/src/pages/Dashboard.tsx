@@ -20,6 +20,7 @@ import AboutModal from "@/components/AboutModal";
 import { requestNotificationPermission, setupNotificationListener, showTaskNotification } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useTasks } from "@/hooks/useTasks";
+import LogsWidget from '@/components/LogsWidget';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -161,6 +162,7 @@ export default function Dashboard() {
           {/* Task List */}
           <div className="lg:col-span-2">
             <TaskList />
+            <LogsWidget />
           </div>
         </div>
       </main>
