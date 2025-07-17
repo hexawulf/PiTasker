@@ -19,16 +19,31 @@ export default function LogsWidget() {
   return (
     <section className="mt-10">
       <h2 className="text-xl font-semibold text-foreground mb-3">📄 Task Logs</h2>
-      <div className="bg-card rounded-[var(--radius)] border border-border divide-y">
-        {logs.map((log) => (
-          <button
+      <div className="bg-card rounded-[var(--radius)] border border-border">
+        {logs.map(log => (
+          <div
             key={log}
-            onClick={() => handleClick(log)}
-            className="w-full text-left px-4 py-3 hover:bg-muted text-sm text-foreground flex justify-between"
+            className="flex justify-between items-center px-4 py-2 hover:bg-muted text-sm border-b border-border"
           >
-            <span>{log}</span>
-            <span className="text-primary text-xs">View</span>
-          </button>
+            <div
+              onClick={() => handleClick(log)}
+              className="cursor-pointer text-foreground hover:text-primary"
+            >
+              {log}
+            </div>
+            <div className="flex gap-3 text-xs text-muted-foreground">
+              <button onClick={() => handleClick(log)} className="hover:text-primary">
+                View
+              </button>
+              <a
+                href={`/api/pitasker-logs/${log}?download=1`}
+                download
+                className="hover:text-primary"
+              >
+                Download
+              </a>
+            </div>
+          </div>
         ))}
       </div>
 

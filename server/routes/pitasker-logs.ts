@@ -16,14 +16,22 @@ router.get('/', (_, res) => {
 });
 
 router.get('/:filename', (req, res) => {
-  const file = req.params.filename;
-  if (!isValidLog(file)) return res.status(400).json({ error: 'Invalid log file' });
+  const { filename } = req.params;
+  const isDownload = req.query.download === '1';
 
-  const filePath = path.join(LOG_DIR, file);
-  const tail = spawn('tail', ['-n', '100', filePath]);
+  if (!isValidLog(filename)) {
+    return res.status(400).json({ error: 'Invalid log file' });
+  }
 
+  const logPath = path.join(LOG_DIR, filename);
+
+  if (isDownload) {
+    return res.download(logPath); // Serve the file as download
+  }
+
+  const tail = spawn('tail', ['-n', '100', logPath]);
   let output = '';
-  tail.stdout.on('data', chunk => output += chunk);
+  tail.stdout.on('data', chunk => (output += chunk));
   tail.on('close', () => res.json({ content: output }));
 });
 
