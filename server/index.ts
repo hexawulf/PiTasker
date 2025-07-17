@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { registerRoutes } from './routes';
+import routes from './routes/index';
 import { pool } from './db';
 
 dotenv.config();
@@ -58,7 +58,7 @@ app.use(
 
 const startServer = async () => {
   // Register backend routes
-  await registerRoutes(app);
+  app.use(routes);
 
 // Serve static frontend (works with Vite or CRA build)
   const rootDir = path.resolve(__dirname, '..');
