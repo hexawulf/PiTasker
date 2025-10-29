@@ -83,7 +83,24 @@ sudo systemctl start nginx
 sudo ufw allow 'Nginx Full'
 ```
 
-### 6. Clone and Setup PiTasker
+### 6. Setup Crontab Access
+
+```bash
+# Verify crontab access (required for crontab integration)
+crontab -l
+
+# If you get "no crontab" - that's fine, it means you have access
+# If you get permission error, fix with:
+sudo chmod u+rw /var/spool/cron/crontabs/$(whoami) 2>/dev/null || true
+
+# Create empty crontab if needed
+echo "" | crontab -
+
+# Verify access again
+crontab -l && echo "Crontab access confirmed"
+```
+
+### 7. Clone and Setup PiTasker
 
 ```bash
 # Clone the repository
@@ -329,7 +346,7 @@ curl -s http://localhost:5000/health | jq .
 {
   "status": "ok",
   "uptime": "15234ms",
-  "timestamp": "2025-07-04T12:30:00.000Z",
+  "timestamp": "2025-10-29T12:30:00.000Z",
   "nodeVersion": "v20.18.1",
   "memoryUsage": {
     "rss": "87MB",
@@ -339,26 +356,49 @@ curl -s http://localhost:5000/health | jq .
 }
 ```
 
-### 2. Test Task Creation and Execution
+### 2. Test Crontab Integration
 
 ```bash
-# Create a simple test task via API
+# Run verification script
+cd /home/zk/projects/pitasker
+./verify-crontab-integration.sh
+
+# Should show all checks passing
+```
+
+### 3. Test Task Creation and Crontab Sync
+
+```bash
+# Create a system-managed test task via UI or API
 curl -X POST http://localhost:5000/api/tasks \
   -H "Content-Type: application/json" \
+  -b cookies.txt \
   -d '{
     "name": "Pi System Info",
     "cronSchedule": "*/5 * * * *",
-    "command": "echo \"Pi Temperature: $(vcgencmd measure_temp)\" >> /tmp/pi-status.log"
+    "command": "echo \"Pi Temperature: $(vcgencmd measure_temp)\" >> /tmp/pi-status.log",
+    "isSystemManaged": true
   }'
 
-# Verify task was created
+# Verify task was created in database
 curl -s http://localhost:5000/api/tasks | jq .
+
+# Verify task was synced to crontab
+crontab -l | grep "Pi System Info"
+
+# Should see entry with PITASKER_ID comment:
+# # PITASKER_ID:550e8400-e29b-41d4-a716-446655440000
+# # PITASKER_COMMENT:Pi System Info
+# */5 * * * * echo "Pi Temperature: $(vcgencmd measure_temp)" >> /tmp/pi-status.log
+
+# Check crontab sync status
+curl -s http://localhost:5000/api/crontab/status -b cookies.txt | jq .
 
 # Check execution after 5 minutes
 tail -f /tmp/pi-status.log
 ```
 
-### 3. Test Browser Access
+### 4. Test Browser Access
 
 Open web browser and navigate to:
 - `http://pitasker.piapps.dev` (should redirect to HTTPS)
@@ -366,9 +406,19 @@ Open web browser and navigate to:
 
 You should see the PiTasker dashboard with:
 - Task statistics cards
-- Task creation form
+- Task creation form with "Sync to System Crontab" toggle
 - System monitor (showing memory <90MB)
-- Task list with your test task
+- Task list with sync status badges
+- "Import from Crontab" button
+- Filter dropdown for viewing tasks by sync status
+
+**Test UI Features**:
+1. Create a new task with system crontab sync enabled
+2. Verify green "Synced" badge appears
+3. Click "Import from Crontab" - should show your test entry
+4. Use filter dropdown to view "System Managed" tasks only
+5. Click purple Server icon to toggle system management
+6. Verify badge changes and crontab updates
 
 ## 📊 Memory Monitoring and Optimization
 

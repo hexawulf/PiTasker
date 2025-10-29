@@ -18,6 +18,13 @@ export const tasks = pgTable("tasks", {
   lastRun: timestamp("last_run"),
   output: text("output"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // NEW FIELDS FOR CRONTAB INTEGRATION
+  crontabId: text("crontab_id").unique(),           // UUID linking to crontab entry
+  syncedToCrontab: boolean("synced_to_crontab").default(false),
+  crontabSyncedAt: timestamp("crontab_synced_at"),
+  source: text("source").default("pitasker"),        // "pitasker" | "crontab" | "imported"
+  isSystemManaged: boolean("is_system_managed").default(true), // If true, managed in system crontab
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -67,6 +74,11 @@ export const updateTaskSchema = insertTaskSchema.partial().extend({
   status: z.enum(["pending", "running", "success", "failed"]).optional(),
   lastRun: z.date().optional(),
   output: z.string().optional(),
+  crontabId: z.string().nullable().optional(),
+  syncedToCrontab: z.boolean().optional(),
+  crontabSyncedAt: z.date().nullable().optional(),
+  source: z.enum(["pitasker", "crontab", "imported"]).optional(),
+  isSystemManaged: z.boolean().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

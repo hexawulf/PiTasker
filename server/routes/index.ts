@@ -20,6 +20,9 @@ import { TaskScheduler } from "../services/taskScheduler";
 import { TaskRunner } from "../services/taskRunner";
 import { NotificationService } from "../services/notificationService";
 import { validateCron } from "../utils/validateCron";
+import { crontabSyncService } from "../services/crontabSyncService";
+import { crontabService } from "../services/crontabService";
+import crontabRouter from './crontab';
 
 const taskScheduler = new TaskScheduler();
 const taskRunner = new TaskRunner();
@@ -27,6 +30,9 @@ const notificationService = new NotificationService();
 
 // PiTasker Logs
 router.use('/api/pitasker-logs', pitaskerLogsRouter);
+
+// Crontab Management
+router.use('/api/crontab', crontabRouter);
 
 // Enhanced health check endpoint with uptime
 router.get("/health", (req, res) => {
@@ -268,6 +274,30 @@ router.post("/api/tasks", isAuthenticated, async (req, res) => {
     // Schedule the task
     taskScheduler.scheduleTask(task);
 
+    // Sync to crontab if system managed (default is true)
+    if (task.isSystemManaged) {
+      try {
+        const crontabId = crontabService.generateId();
+        await crontabService.addCrontabEntry({
+          id: crontabId,
+          schedule: task.cronSchedule,
+          command: task.command,
+          comment: task.name,
+          isManaged: true,
+        });
+
+        // Update task with crontab info
+        await storage.updateTask(task.id, {
+          crontabId: crontabId,
+          syncedToCrontab: true,
+          crontabSyncedAt: new Date(),
+        });
+      } catch (error) {
+        console.error("Failed to sync task to crontab:", error);
+        // Task is created but not synced - user can retry sync later
+      }
+    }
+
     res.status(201).json(task);
   } catch (error) {
     console.error("Error creating task:", error);
@@ -307,6 +337,45 @@ router.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
       taskScheduler.scheduleTask(updatedTask);
     }
 
+    // Sync to crontab if system managed and schedule or command changed
+    if (updatedTask.isSystemManaged && (validation.data.cronSchedule || validation.data.command)) {
+      try {
+        if (updatedTask.crontabId) {
+          await crontabService.updateCrontabEntry(updatedTask.crontabId, {
+            id: updatedTask.crontabId,
+            schedule: updatedTask.cronSchedule,
+            command: updatedTask.command,
+            comment: updatedTask.name,
+            isManaged: true,
+          });
+
+          await storage.updateTask(id, {
+            syncedToCrontab: true,
+            crontabSyncedAt: new Date(),
+          });
+        } else {
+          // Task doesn't have crontab ID yet - add it
+          const crontabId = crontabService.generateId();
+          await crontabService.addCrontabEntry({
+            id: crontabId,
+            schedule: updatedTask.cronSchedule,
+            command: updatedTask.command,
+            comment: updatedTask.name,
+            isManaged: true,
+          });
+
+          await storage.updateTask(id, {
+            crontabId: crontabId,
+            syncedToCrontab: true,
+            crontabSyncedAt: new Date(),
+          });
+        }
+      } catch (error) {
+        console.error("Failed to sync task update to crontab:", error);
+        // Update succeeded but crontab sync failed
+      }
+    }
+
     res.json(updatedTask);
   } catch (error) {
     console.error("Error updating task:", error);
@@ -320,6 +389,21 @@ router.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await storage.getTask(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Remove from crontab if it has a crontab ID
+    if (task.crontabId) {
+      try {
+        await crontabService.removeCrontabEntry(task.crontabId);
+      } catch (error) {
+        console.error("Failed to remove from crontab:", error);
+        // Continue with deletion even if crontab removal fails
+      }
     }
 
     const success = await storage.deleteTask(id);
@@ -361,6 +445,72 @@ router.post("/api/tasks/:id/run", isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error("Error running task:", error);
     res.status(500).json({ message: "Failed to run task" });
+  }
+});
+
+// Toggle system-managed status
+router.post("/api/tasks/:id/toggle-system-managed", isAuthenticated, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const task = await storage.getTask(id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    const newIsSystemManaged = !task.isSystemManaged;
+
+    if (newIsSystemManaged) {
+      // Enable system management - add to crontab
+      try {
+        const crontabId = task.crontabId || crontabService.generateId();
+        await crontabService.addCrontabEntry({
+          id: crontabId,
+          schedule: task.cronSchedule,
+          command: task.command,
+          comment: task.name,
+          isManaged: true,
+        });
+
+        await storage.updateTask(id, {
+          isSystemManaged: true,
+          crontabId: crontabId,
+          syncedToCrontab: true,
+          crontabSyncedAt: new Date(),
+        });
+      } catch (error: any) {
+        return res.status(500).json({ 
+          message: "Failed to add to crontab",
+          error: error.message 
+        });
+      }
+    } else {
+      // Disable system management - remove from crontab
+      if (task.crontabId) {
+        try {
+          await crontabService.removeCrontabEntry(task.crontabId);
+        } catch (error) {
+          console.error("Failed to remove from crontab:", error);
+          // Continue anyway
+        }
+      }
+
+      await storage.updateTask(id, {
+        isSystemManaged: false,
+        crontabId: null as any,
+        syncedToCrontab: false,
+        crontabSyncedAt: null as any,
+      });
+    }
+
+    const updatedTask = await storage.getTask(id);
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("Error toggling system-managed:", error);
+    res.status(500).json({ message: "Failed to toggle system-managed status" });
   }
 });
 

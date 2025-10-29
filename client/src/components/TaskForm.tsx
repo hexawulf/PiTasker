@@ -7,15 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, PlusCircle, Clock, Terminal, AlertCircle } from "lucide-react";
+import { Plus, PlusCircle, Clock, Terminal, AlertCircle, Server, Database, CheckCircle2, AlertTriangle, Upload } from "lucide-react";
 import { insertTaskSchema, type InsertTask } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ImportCronModal from "@/components/ImportCronModal";
 
 export default function TaskForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isSystemManaged, setIsSystemManaged] = useState(true);
 
   const form = useForm<InsertTask>({
     resolver: zodResolver(insertTaskSchema),
@@ -69,7 +73,7 @@ export default function TaskForm() {
   });
 
   const onSubmit = (data: InsertTask) => {
-    createTaskMutation.mutate(data);
+    createTaskMutation.mutate({ ...data, isSystemManaged } as any);
   };
 
   return (
@@ -164,15 +168,67 @@ export default function TaskForm() {
                 </FormItem>
               )}
             />
+
+            {/* System Crontab Management Toggle */}
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Server className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">Sync to System Crontab</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {isSystemManaged ? (
+                        <span className="flex items-center space-x-1">
+                          <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+                          <span>Task will be managed by system crontab</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center space-x-1">
+                          <Database className="h-3 w-3 text-gray-600 dark:text-gray-400" />
+                          <span>Task will run via PiTasker only (database-only mode)</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={isSystemManaged}
+                  onCheckedChange={setIsSystemManaged}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+              </div>
+              
+              {isSystemManaged && (
+                <Alert className="mt-3 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700">
+                  <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <AlertDescription className="text-sm text-gray-700 dark:text-gray-300">
+                    This task will be automatically added to your system crontab and will run even if PiTasker is stopped.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {!isSystemManaged && (
+                <Alert className="mt-3 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <AlertTriangle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <AlertDescription className="text-sm text-gray-700 dark:text-gray-300">
+                    This task will only run when PiTasker application is running. It will not be added to system crontab.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
             
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={createTaskMutation.isPending}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {createTaskMutation.isPending ? "Creating..." : "Create Task"}
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                type="submit" 
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={createTaskMutation.isPending}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+              </Button>
+              
+              <ImportCronModal />
+            </div>
           </form>
         </Form>
       </CardContent>
