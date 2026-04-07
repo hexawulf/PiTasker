@@ -1,6 +1,7 @@
-import { schedule, validate, ScheduledTask } from "node-cron";
+import { schedule, ScheduledTask } from "node-cron";
 import { Task } from "@shared/schema";
 import { TaskRunner } from "./taskRunner";
+import { validateCron } from "../utils/validateCron";
 
 export class TaskScheduler {
   private scheduledTasks: Map<number, ScheduledTask> = new Map();
@@ -13,7 +14,7 @@ export class TaskScheduler {
   scheduleTask(task: Task): void {
     try {
       // Validate cron expression
-      if (!validate(task.cronSchedule)) {
+      if (!validateCron(task.cronSchedule)) {
         console.error(`Invalid cron schedule for task ${task.id}: ${task.cronSchedule}`);
         return;
       }
