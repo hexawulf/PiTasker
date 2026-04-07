@@ -2,16 +2,21 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { logRetentionService, LOG_DIR } from '../services/logRetentionService';
 
 const router = express.Router();
-const LOG_DIR = '/home/zk/logs/pitasker';
 
 const isValidLog = (name: string) => /^[\w.-]+\.log$/.test(name);
 
 router.get('/', (_, res) => {
   fs.readdir(LOG_DIR, (err, files) => {
     if (err) return res.status(500).json({ error: 'Cannot list logs' });
-    res.json(files.filter(isValidLog));
+    
+    const filteredFiles = files
+      .filter(isValidLog)
+      .filter(file => logRetentionService.isWithinRetention(file));
+      
+    res.json(filteredFiles);
   });
 });
 
