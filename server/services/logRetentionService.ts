@@ -3,7 +3,7 @@ import path from 'path';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
-export const getLogDir = () => process.env.LOG_DIR || '/home/zk/logs';
+export const getLogDir = () => process.env.LOG_DIR || '/home/zk/logs/pitasker';
 export const LOG_PATTERN = /^([\w.-]+)-(\d{4}-\d{2}-\d{2})\.log$/;
 
 const envSchema = z.object({
