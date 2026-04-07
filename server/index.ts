@@ -1,16 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
-import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import routes from './routes/index';
 import { pool } from './db';
 import { logRetentionService } from './services/logRetentionService';
-
-dotenv.config();
 
 if (!process.env.SESSION_SECRET) {
   console.error("FATAL ERROR: SESSION_SECRET is not defined. Please set it in your environment variables.");

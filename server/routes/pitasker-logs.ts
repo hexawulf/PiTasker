@@ -2,14 +2,15 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { logRetentionService, LOG_DIR } from '../services/logRetentionService';
+import { logRetentionService, getLogDir } from '../services/logRetentionService';
 
 const router = express.Router();
 
 const isValidLog = (name: string) => /^[\w.-]+\.log$/.test(name);
 
 router.get('/', (_, res) => {
-  fs.readdir(LOG_DIR, (err, files) => {
+  const logDir = getLogDir();
+  fs.readdir(logDir, (err, files) => {
     if (err) return res.status(500).json({ error: 'Cannot list logs' });
     
     const filteredFiles = files
@@ -28,7 +29,8 @@ router.get('/:filename', (req, res) => {
     return res.status(400).json({ error: 'Invalid log file' });
   }
 
-  const logPath = path.join(LOG_DIR, filename);
+  const logDir = getLogDir();
+  const logPath = path.join(logDir, filename);
 
   if (isDownload) {
     return res.download(logPath); // Serve the file as download
