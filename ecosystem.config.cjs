@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'pitasker',
     script: 'dist/index.js', // ✅ Start compiled backend
-    cwd: '/home/zk/projects/pitasker', // ✅ Confirm this is correct
+    cwd: '/home/zk/projects/PiTasker',
     interpreter: 'node',
     exec_mode: 'fork',
     watch: false,
