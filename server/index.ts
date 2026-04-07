@@ -8,6 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import routes from './routes/index';
 import { pool } from './db';
+import { logRetentionService } from './services/logRetentionService';
 
 dotenv.config();
 
@@ -59,6 +60,9 @@ app.use(
 const startServer = async () => {
   // Register backend routes
   app.use(routes);
+
+  // Initialize log retention cleanup
+  logRetentionService.startScheduledCleanup();
 
 // Serve static frontend (works with Vite or CRA build)
   const rootDir = path.resolve(__dirname, '..');
