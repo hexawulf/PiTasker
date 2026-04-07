@@ -218,7 +218,7 @@ router.get("/api/tasks/export", isAuthenticated, async (req, res) => {
       schedule: t.cronSchedule,
       command: t.command,
       createdAt: t.createdAt,
-      updatedAt: (t as any).updatedAt ?? t.createdAt,
+      updatedAt: t.createdAt,
     }));
 
     const pretty = String(req.query.pretty) === "true";
@@ -376,7 +376,7 @@ router.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
       }
     }
 
-    res.json(updatedTask);
+    res.json(await storage.getTask(id) || updatedTask);
   } catch (error) {
     console.error("Error updating task:", error);
     res.status(500).json({ message: "Failed to update task" });
@@ -500,9 +500,9 @@ router.post("/api/tasks/:id/toggle-system-managed", isAuthenticated, async (req,
 
       await storage.updateTask(id, {
         isSystemManaged: false,
-        crontabId: null as any,
+        crontabId: null,
         syncedToCrontab: false,
-        crontabSyncedAt: null as any,
+        crontabSyncedAt: null,
       });
     }
 
@@ -524,31 +524,20 @@ router.post("/api/import-cronjobs", isAuthenticated, async (req, res) => {
   let failed = 0;
 
   for (const [index, job] of req.body.entries()) {
-    const { name, schedule, command } = job || {};
-    if (!name || !schedule || !command) {
-      console.error(`Import error at index ${index}: missing fields`);
-      failed++;
-      continue;
-    }
+    const validation = insertTaskSchema.safeParse({
+      name: job?.name,
+      cronSchedule: job?.schedule,
+      command: job?.command,
+    });
 
-    if (typeof command !== "string" || command.length > 1024) {
-      console.error(`Import error at index ${index}: command too long`);
-      failed++;
-      continue;
-    }
-
-    if (!validateCron(schedule)) {
-      console.error(`Import error at index ${index}: invalid schedule`);
+    if (!validation.success) {
+      console.error(`Import error at index ${index}:`, validation.error.message);
       failed++;
       continue;
     }
 
     try {
-      const newTask = await storage.createTask({
-        name,
-        cronSchedule: schedule,
-        command,
-      });
+      const newTask = await storage.createTask(validation.data);
       taskScheduler.scheduleTask(newTask);
       imported++;
     } catch (error) {
