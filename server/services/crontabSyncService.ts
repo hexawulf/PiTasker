@@ -221,9 +221,9 @@ export class CrontabSyncService {
       
       // Update database
       await storage.updateTask(taskId, {
-        crontabId: null as any,
+        crontabId: null,
         syncedToCrontab: false,
-        crontabSyncedAt: null as any,
+        crontabSyncedAt: null,
       });
     } catch (error: any) {
       throw new Error(`Failed to remove from crontab: ${error.message}`);
