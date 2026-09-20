@@ -6,7 +6,8 @@ module.exports = {
     interpreter: 'node',
     exec_mode: 'fork',
     watch: false,
-    max_memory_restart: '90M',
+    max_memory_restart: '256M',
+    env_file: '.env',
     env: {
       NODE_ENV: 'production', // Keep NODE_ENV as production for PM2 default
       // PORT, SESSION_SECRET, and DATABASE_URL should be inherited from the shell environment
