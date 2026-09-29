@@ -9,7 +9,8 @@ const router = express.Router();
 // Import crontab entries to database
 router.post("/import", isAuthenticated, async (req, res) => {
   try {
-    const result = await crontabSyncService.importFromCrontab();
+    const { commands } = req.body || {};
+    const result = await crontabSyncService.importFromCrontab({ commands });
     res.json(result);
   } catch (error: any) {
     console.error("Crontab import error:", error);

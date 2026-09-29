@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 
 const execAsync = promisify(exec);
 
@@ -54,10 +54,14 @@ export class CrontabService {
   async addCrontabEntry(entry: CrontabEntry): Promise<void> {
     const existingEntries = await this.readUserCrontab();
     
-    // Check if entry with same ID already exists
-    const existingIndex = existingEntries.findIndex((e) => e.id === entry.id);
+    // Check if entry with same ID or command already exists
+    const existingIndex = existingEntries.findIndex(
+      (e) => e.id === entry.id || e.command.trim() === entry.command.trim()
+    );
     if (existingIndex !== -1) {
-      throw new Error(`Crontab entry with ID ${entry.id} already exists`);
+      existingEntries[existingIndex] = { ...entry, id: entry.id };
+      await this.writeUserCrontab(existingEntries);
+      return;
     }
 
     existingEntries.push(entry);
@@ -65,12 +69,15 @@ export class CrontabService {
   }
 
   /**
-   * Update an existing crontab entry by ID
+   * Update an existing crontab entry by ID or command
    */
   async updateCrontabEntry(id: string, entry: CrontabEntry): Promise<void> {
     const existingEntries = await this.readUserCrontab();
     
-    const index = existingEntries.findIndex((e) => e.id === id);
+    let index = existingEntries.findIndex((e) => e.id === id);
+    if (index === -1) {
+      index = existingEntries.findIndex((e) => e.command.trim() === entry.command.trim());
+    }
     if (index === -1) {
       throw new Error(`Crontab entry with ID ${id} not found`);
     }
@@ -80,7 +87,7 @@ export class CrontabService {
   }
 
   /**
-   * Remove a crontab entry by ID
+   * Remove a crontab entry by ID or command
    */
   async removeCrontabEntry(id: string): Promise<void> {
     const existingEntries = await this.readUserCrontab();
@@ -142,6 +149,14 @@ export class CrontabService {
   }
 
   /**
+   * Generate a deterministic UUID-formatted ID for unmanaged crontab entries based on command
+   */
+  generateDeterministicId(command: string): string {
+    const hash = createHash("md5").update(command.trim()).digest("hex");
+    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+  }
+
+  /**
    * Parse a single crontab line
    */
   private parseCrontabLine(
@@ -168,7 +183,7 @@ export class CrontabService {
       }
 
       return {
-        id: existingId || randomUUID(),
+        id: existingId || this.generateDeterministicId(command),
         schedule,
         command,
         comment: existingComment || undefined,

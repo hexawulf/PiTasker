@@ -33,7 +33,21 @@ export default function ImportCronModal() {
 
   const importMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/crontab/import");
+      const selectedCommands =
+        selectedIndices.size > 0 && selectedIndices.size < parsedEntries.length
+          ? Array.from(selectedIndices)
+              .map((i) => {
+                const item = parsedEntries.find((p) => p.index === i);
+                if (!item) return null;
+                const parts = item.line.split(/\s+/);
+                return parts.slice(5).join(" ");
+              })
+              .filter((c): c is string => Boolean(c))
+          : undefined;
+
+      const res = await apiRequest("POST", "/api/crontab/import", {
+        commands: selectedCommands,
+      });
       return res.json();
     },
     onSuccess: (data: { imported: number; updated: number; skipped: number; errors: string[] }) => {
@@ -216,7 +230,7 @@ export default function ImportCronModal() {
             className="bg-blue-600 hover:bg-blue-700"
           >
             <Download className="mr-2 h-4 w-4" />
-            {importMutation.isPending ? "Importing..." : "Import All"}
+            {importMutation.isPending ? "Importing..." : (selectedIndices.size > 0 && selectedIndices.size < parsedEntries.length ? `Import Selected (${selectedIndices.size})` : "Import All")}
           </Button>
         </DialogFooter>
       </DialogContent>

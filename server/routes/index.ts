@@ -16,7 +16,7 @@ interface AuthenticatedSession extends session.Session {
   user?: { id: number; username: string };
 }
 import { insertTaskSchema, updateTaskSchema } from "../../shared/schema";
-import { TaskScheduler } from "../services/taskScheduler";
+import { taskScheduler } from "../services/taskScheduler";
 import { TaskRunner } from "../services/taskRunner";
 import { NotificationService } from "../services/notificationService";
 import { validateCron } from "../utils/validateCron";
@@ -24,7 +24,6 @@ import { crontabSyncService } from "../services/crontabSyncService";
 import { crontabService } from "../services/crontabService";
 import crontabRouter from './crontab';
 
-const taskScheduler = new TaskScheduler();
 const taskRunner = new TaskRunner();
 const notificationService = new NotificationService();
 

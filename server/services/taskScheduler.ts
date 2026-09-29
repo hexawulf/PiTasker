@@ -60,3 +60,5 @@ export class TaskScheduler {
     console.log("Stopped all scheduled tasks");
   }
 }
+
+export const taskScheduler = new TaskScheduler();

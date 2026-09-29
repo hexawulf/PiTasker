@@ -1,5 +1,6 @@
 import { crontabService, CrontabEntry } from "./crontabService";
 import { storage } from "../storage";
+import { taskScheduler } from "./taskScheduler";
 import { Task, InsertTask } from "@shared/schema";
 
 export interface SyncResult {
@@ -31,9 +32,16 @@ export interface Discrepancy {
 
 export class CrontabSyncService {
   /**
-   * Import crontab entries to database
+   * Normalize command by removing shell redirections and whitespace
    */
-  async importFromCrontab(): Promise<ImportResult> {
+  private getBaseCommand(cmd: string): string {
+    return cmd.replace(/\s*(?:>>|>|2>>|2>&1|<)\s*.*$/, "").trim();
+  }
+
+  /**
+   * Import crontab entries to database without duplicating existing tasks
+   */
+  async importFromCrontab(options?: { commands?: string[] }): Promise<ImportResult> {
     const result: ImportResult = {
       imported: 0,
       updated: 0,
@@ -42,25 +50,37 @@ export class CrontabSyncService {
     };
 
     try {
-      const crontabEntries = await crontabService.readUserCrontab();
+      let crontabEntries = await crontabService.readUserCrontab();
+
+      if (options?.commands && options.commands.length > 0) {
+        const allowedCommands = new Set(options.commands.map((c) => c.trim()));
+        crontabEntries = crontabEntries.filter((e) => allowedCommands.has(e.command.trim()));
+      }
       
       for (const entry of crontabEntries) {
         try {
-          // Check if this entry already exists in database
-          const existingTask = await this.findTaskByCrontabId(entry.id);
+          // Check if this entry already exists in database by crontabId or normalized command
+          const existingTask = await this.findExistingTask(entry);
 
           if (existingTask) {
-            // Update if entry has changed
-            const hasChanged = 
-              existingTask.cronSchedule !== entry.schedule ||
-              existingTask.command !== entry.command;
+            // Update if entry schedule or command has changed
+            const scheduleChanged = existingTask.cronSchedule !== entry.schedule;
+            const commandChanged = existingTask.command.trim() !== entry.command.trim();
+            const shouldLinkCrontabId = Boolean(entry.id && existingTask.crontabId !== entry.id);
 
-            if (hasChanged) {
-              await storage.updateTask(existingTask.id, {
+            if (scheduleChanged || commandChanged || shouldLinkCrontabId) {
+              const updated = await storage.updateTask(existingTask.id, {
                 cronSchedule: entry.schedule,
                 command: entry.command,
+                crontabId: entry.id || existingTask.crontabId,
                 crontabSyncedAt: new Date(),
+                syncedToCrontab: true,
               });
+
+              if (scheduleChanged && updated) {
+                taskScheduler.unscheduleTask(existingTask.id);
+                taskScheduler.scheduleTask(updated);
+              }
               result.updated++;
             } else {
               result.skipped++;
@@ -76,13 +96,17 @@ export class CrontabSyncService {
             const createdTask = await storage.createTask(newTask);
             
             // Update with crontab metadata
-            await storage.updateTask(createdTask.id, {
+            const updated = await storage.updateTask(createdTask.id, {
               crontabId: entry.id,
               syncedToCrontab: true,
               crontabSyncedAt: new Date(),
               source: entry.isManaged ? "pitasker" : "crontab",
               isSystemManaged: true,
             });
+
+            if (updated) {
+              taskScheduler.scheduleTask(updated);
+            }
 
             result.imported++;
           }
@@ -252,7 +276,9 @@ export class CrontabSyncService {
           continue;
         }
 
-        const crontabEntry = crontabEntries.find((e) => e.id === task.crontabId);
+        const crontabEntry = crontabEntries.find(
+          (e) => e.id === task.crontabId || e.command.trim() === task.command.trim() || this.getBaseCommand(e.command) === this.getBaseCommand(task.command)
+        );
         if (!crontabEntry) {
           discrepancies.push({
             type: "missing_in_crontab",
@@ -273,7 +299,7 @@ export class CrontabSyncService {
           });
         }
 
-        if (crontabEntry.command !== task.command) {
+        if (crontabEntry.command.trim() !== task.command.trim()) {
           discrepancies.push({
             type: "command_mismatch",
             taskId: task.id,
@@ -286,7 +312,7 @@ export class CrontabSyncService {
       // Check crontab entries that should be in database
       const managedCrontabEntries = crontabEntries.filter((e) => e.isManaged);
       for (const entry of managedCrontabEntries) {
-        const task = await this.findTaskByCrontabId(entry.id);
+        const task = await this.findExistingTask(entry);
         if (!task) {
           discrepancies.push({
             type: "missing_in_db",
@@ -309,9 +335,40 @@ export class CrontabSyncService {
   }
 
   /**
+   * Find existing task by crontab ID or normalized command (including base command)
+   */
+  async findExistingTask(entry: CrontabEntry): Promise<Task | null> {
+    const allTasks = await storage.getAllTasks();
+
+    // 1. Match by crontabId if set
+    if (entry.id) {
+      const taskById = allTasks.find((t) => t.crontabId === entry.id);
+      if (taskById) return taskById;
+    }
+
+    // 2. Match by exact normalized command
+    const normalizedEntryCmd = entry.command.trim();
+    const taskByCmd = allTasks.find(
+      (t) => t.command && t.command.trim() === normalizedEntryCmd
+    );
+    if (taskByCmd) return taskByCmd;
+
+    // 3. Match by base command (without shell redirections)
+    const baseEntryCmd = this.getBaseCommand(entry.command);
+    if (baseEntryCmd.length > 5) {
+      const taskByBaseCmd = allTasks.find(
+        (t) => t.command && this.getBaseCommand(t.command) === baseEntryCmd
+      );
+      if (taskByBaseCmd) return taskByBaseCmd;
+    }
+
+    return null;
+  }
+
+  /**
    * Find task by crontab ID
    */
-  private async findTaskByCrontabId(crontabId: string): Promise<Task | null> {
+  async findTaskByCrontabId(crontabId: string): Promise<Task | null> {
     const allTasks = await storage.getAllTasks();
     const task = allTasks.find((t) => t.crontabId === crontabId);
     return task || null;
