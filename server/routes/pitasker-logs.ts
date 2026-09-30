@@ -3,12 +3,13 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { logRetentionService, getLogDir } from '../services/logRetentionService';
+import { isAuthenticated } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
 const isValidLog = (name: string) => /^[\w.-]+\.log$/.test(name);
 
-router.get('/', (_, res) => {
+router.get('/', isAuthenticated, (_, res) => {
   const logDir = getLogDir();
   fs.readdir(logDir, (err, files) => {
     if (err) return res.status(500).json({ error: 'Cannot list logs' });
@@ -21,7 +22,7 @@ router.get('/', (_, res) => {
   });
 });
 
-router.get('/:filename', (req, res) => {
+router.get('/:filename', isAuthenticated, (req, res) => {
   const { filename } = req.params;
   const isDownload = req.query.download === '1';
 
