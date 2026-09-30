@@ -1,0 +1,18 @@
+# PiTasker: a copy of root's crontab for the read-only fleet view, written by
+# root so the agent (as zk, without sudo) can read it. Rendered by
+# scripts/install-agent.sh. Triggered by pitasker-root-cron-snapshot.path
+# (any crontab change) and .timer (every 15 min).
+[Unit]
+Description=PiTasker: snapshot of root's crontab (read-only fleet view)
+
+[Service]
+Type=oneshot
+ExecStart=@LIB_DIR@/root-cron-snapshot
+StateDirectory=pitasker
+StateDirectoryMode=0755
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=@VAR_DIR@
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes

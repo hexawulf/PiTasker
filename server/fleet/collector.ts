@@ -10,7 +10,7 @@
 //   /etc/cron.{hourly,daily,weekly,monthly} → run-parts scripts
 //   systemctl [--user] list-timers --all -o json + two `systemctl show` calls
 //   journalctl (cron, 2 days, MESSAGE + timestamp only) → last start per command
-//   git -C /home/zk/bin rev-parse / status / ls-files → bin HEAD, tracked, dirty
+//   git --no-optional-locks -C /home/zk/bin rev-parse / status / ls-files → bin HEAD, tracked, dirty
 //
 // A failing source adds an entry to errors[]; the snapshot still comes back.
 // Every command, line and env value is redacted here, before it leaves.
@@ -95,7 +95,9 @@ export type BinState = { head: string | null; dirty: boolean; tracked: Set<strin
 
 export async function binState(binDir: string): Promise<BinState | null> {
   if (!fs.existsSync(binDir)) return null;
-  const git = (args: string[]) => runTool("git", ["-C", binDir, ...args], { timeoutMs: 8_000 });
+  // --no-optional-locks: `git status` must never try to refresh .git/index (the
+  // agent's home is read-only, and it only reads).
+  const git = (args: string[]) => runTool("git", ["--no-optional-locks", "-C", binDir, ...args], { timeoutMs: 8_000 });
   const head = await git(["rev-parse", "HEAD"]).then((s) => s.trim()).catch(() => null);
   if (!head) return { head: null, dirty: false, tracked: null, dirtyFiles: new Set() };
   const [ls, status] = await Promise.all([git(["ls-files", "-z"]).catch(() => ""), git(["status", "--porcelain=v1", "-z"]).catch(() => "")]);

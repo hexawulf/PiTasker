@@ -1,0 +1,12 @@
+# PiTasker: refresh the root crontab snapshot every 15 minutes (a fallback
+# for the .path unit) and shortly after boot.
+[Unit]
+Description=PiTasker: refresh the root crontab snapshot every 15 min
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Unit=pitasker-root-cron-snapshot.service
+
+[Install]
+WantedBy=timers.target

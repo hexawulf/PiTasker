@@ -305,3 +305,15 @@ describe("parsers", () => {
     ["~/bin/x", null, null],
   ])("scriptPath(%s)", (cmd, home, want) => expect(scriptPath(cmd, home)).toBe(want));
 });
+
+describe("bin.git is only read", () => {
+  it("git status leaves .git/index untouched (no optional locks)", async () => {
+    const env = host("alpha");
+    const index = path.join(env.PITASKER_BIN_DIR, ".git", "index");
+    fs.utimesSync(index, new Date("2020-01-01T00:00:00Z"), new Date("2020-01-01T00:00:00Z")); // plain `git status` would rewrite it
+    fs.utimesSync(env.PITASKER_BIN_DIR + "/dirty-job", new Date(), new Date());
+    const before = fs.statSync(index).mtimeMs;
+    await collect();
+    expect(fs.statSync(index).mtimeMs).toBe(before);
+  });
+});

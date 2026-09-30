@@ -1,0 +1,50 @@
+# PiTasker agent (read-only fleet view) — rendered by scripts/install-agent.sh.
+# The @-placeholders are filled in and the result is checked with
+# `systemd-analyze verify` before it goes to /etc/systemd/system/.
+# Settings (bind address, port, token hash) come from @AGENT_DIR@/.env.
+#
+# Security (docs/plans/2.1-fleet-view.md › Security): zk has passwordless
+# sudo on every host, so the agent must not be able to become root.
+#   CapabilityBoundingSet= (empty) + AmbientCapabilities= (none): no process
+#     of the agent can gain a capability, so sudo can't change its uid.
+#   No NoNewPrivileges=: `crontab -l` needs the setgid crontab binary
+#     (/var/spool/cron/crontabs is root:crontab 1730); NoNewPrivileges=yes
+#     makes it fail with "fopen: Permission denied".
+#   ProtectSystem=strict + ProtectHome=read-only: it can write nowhere.
+#   Deliberately absent: PrivateDevices=, ProtectKernelTunables=,
+#     ProtectKernelModules=, ProtectKernelLogs=, ProtectClock=,
+#     RestrictNamespaces=, RestrictRealtime=, RestrictSUIDSGID=,
+#     LockPersonality=, MemoryDenyWriteExecute=, SystemCallFilter=,
+#     SystemCallArchitectures=, RestrictAddressFamilies=, DynamicUser= —
+#     for a non-root service each of them IMPLIES NoNewPrivileges=yes
+#     (systemd.exec(5)), which would break `crontab -l` the same way.
+#     tests/install/run.sh fails if one of them appears here.
+[Unit]
+Description=PiTasker agent (read-only fleet view for the PiTasker hub)
+After=network-online.target
+Wants=network-online.target
+@AFTER@
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@AGENT_DIR@
+EnvironmentFile=@AGENT_DIR@/.env
+Environment=NODE_ENV=production
+Environment=PITASKER_MODE=agent
+Environment=XDG_RUNTIME_DIR=/run/user/@UID@
+ExecStart=@NODE@ @AGENT_DIR@/agent.mjs
+Restart=on-failure
+RestartSec=5
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+UMask=0077
+MemoryMax=@MEMORY_MAX@
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

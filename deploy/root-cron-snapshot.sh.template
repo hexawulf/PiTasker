@@ -1,0 +1,34 @@
+#!/bin/sh
+# Author:      0xWulf (zk@hexawulf.dev)
+# Description: Copy root's crontab to @VAR_DIR@/root-crontab (0640 root:@GROUP@)
+#              for PiTasker's read-only fleet view: the agent runs as @USER@
+#              without sudo and reads this file instead. Atomic (rename);
+#              root without a crontab → an empty file. @VAR_DIR@/root-crontab.status
+#              says "ok" or "none". Installed root-owned by scripts/install-agent.sh
+#              (never run from a user-writable path).
+# Modified:    2026-10-01
+# Usage:       run by pitasker-root-cron-snapshot.service (as root)
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+out="@VAR_DIR@/root-crontab"
+dir="@VAR_DIR@"
+umask 077
+mkdir -p "$dir"
+tmp="$(mktemp "$dir/.root-crontab.XXXXXX")"
+err="$(mktemp "$dir/.root-crontab-err.XXXXXX")"
+trap 'rm -f "$tmp" "$err"' EXIT
+if crontab -l -u root > "$tmp" 2> "$err"; then
+  status=ok
+elif grep -qi "no crontab" "$err"; then
+  : > "$tmp"
+  status=none
+else
+  cat "$err" >&2
+  exit 1
+fi
+chown root:"@GROUP@" "$tmp"
+chmod 0640 "$tmp"
+mv -f "$tmp" "$out"
+printf '%s\n' "$status" > "$dir/root-crontab.status.new"
+chmod 0644 "$dir/root-crontab.status.new"
+mv -f "$dir/root-crontab.status.new" "$dir/root-crontab.status"

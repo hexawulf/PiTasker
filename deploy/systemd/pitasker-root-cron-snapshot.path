@@ -1,0 +1,10 @@
+# PiTasker: refresh the root crontab snapshot whenever a crontab changes.
+[Unit]
+Description=PiTasker: watch the crontab spool for the root crontab snapshot
+
+[Path]
+PathChanged=/var/spool/cron/crontabs
+Unit=pitasker-root-cron-snapshot.service
+
+[Install]
+WantedBy=multi-user.target

@@ -15,7 +15,9 @@
     "db:status": "node scripts/migrate.mjs --status",
     "db:seed": "tsx server/seed.ts",
     "check:theme": "bash scripts/check-theme-tokens.sh",
-    "build:agent": "node scripts/build-agent.mjs"
+    "build:agent": "node scripts/build-agent.mjs",
+    "test:install": "bash tests/install/run.sh",
+    "check:shell": "shellcheck scripts/*.sh tests/install/*.sh tests/fakes/* deploy/root-cron-snapshot.sh.template"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.7",
