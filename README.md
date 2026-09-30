@@ -5,8 +5,8 @@ user's crontab from a web UI, and let PiTasker itself run the jobs that
 should not live in cron. Runs on piapps as the pm2 app `pitasker`
 (<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
 
-**Current version: 2.0** — live on piapps since 2026-09-30 (tagged 2.0.0 once
-the CSP has run a day in enforce mode). A fix-and-refresh release: one runner
+**Current version: 2.0.0** — released 2026-09-30, live on piapps with the
+CSP enforced. A fix-and-refresh release: one runner
 per job, a crontab that stays exactly as you wrote it, a diff before every
 write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md)
 and the [2.0 plan](docs/plans/2.0.md).

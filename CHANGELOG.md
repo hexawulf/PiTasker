@@ -3,7 +3,9 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [Unreleased] — 2.0.0 (P1 + P2), live on piapps since 2026-09-30
+## [Unreleased]
+
+## [2.0.0] — 2026-09-30 (P1 + P2)
 
 ### Added
 - **About dialog** (ⓘ in the header, like PiDeck's): tech stack, contact,
