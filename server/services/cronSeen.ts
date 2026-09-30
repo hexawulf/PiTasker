@@ -17,7 +17,7 @@ export type CronSeen = { at: string; source: "journal" | "logfile"; detail?: str
 
 /** The file a command's stdout is redirected to (> or >>), if it is an absolute path. */
 export function redirectTarget(command: string): string | null {
-  const m = /(?:^|[^0-9&])>{1,2}\s*(\/[^\s;|&<>]+)/.exec(command);
+  const m = /(?:^|[^0-9&>])>{1,2}\s*(\/[^\s;|&<>]+)/.exec(command);
   if (!m || m[1] === "/dev/null") return null;
   return m[1].includes("$") ? null : m[1];
 }
