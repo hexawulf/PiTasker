@@ -41,4 +41,11 @@ Thumbs.db
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db.env
+ehthumbs.db
+.env
+
+# Tests
+.e2e/
+dist-e2e/
+test-results/
+playwright-report/
