@@ -12,6 +12,12 @@ export class TaskScheduler {
   }
 
   scheduleTask(task: Task): void {
+    // The system crontab runs system-managed tasks; scheduling them here as
+    // well ran every job twice (and in UTC, 8 h off for daily jobs).
+    if (task.isSystemManaged) {
+      this.unscheduleTask(task.id);
+      return;
+    }
     try {
       // Validate cron expression
       if (!validateCron(task.cronSchedule)) {
