@@ -2,7 +2,7 @@
 import fs from "fs";
 import type { AddressInfo } from "net";
 import type { Server } from "http";
-import { createApp } from "../../../server/app";
+import { createApp, type AppOptions } from "../../../server/app";
 import { hashPassword } from "../../../server/auth";
 import { pool } from "../../../server/db";
 import { storage } from "../../../server/storage";
@@ -28,8 +28,8 @@ export function setCrontab(text: string | null) {
 }
 export const crontabText = () => (fs.existsSync(process.env.FAKE_CRONTAB_FILE!) ? fs.readFileSync(process.env.FAKE_CRONTAB_FILE!, "utf8") : null);
 
-export async function startApp({ login = true } = {}): Promise<Client> {
-  const app = createApp({ sessionSecret: "db-test-session-secret-0123456789" });
+export async function startApp({ login = true, app: appOpts = {} as AppOptions } = {}): Promise<Client> {
+  const app = createApp({ sessionSecret: "db-test-session-secret-0123456789", ...appOpts });
   const server: Server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   let cookie = "";

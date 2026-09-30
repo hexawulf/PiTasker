@@ -14,6 +14,8 @@ import { installCsp, installSecurityHeaders } from "./security";
 import { sameOrigin } from "./middleware/sameOrigin";
 import authRoutes from "./routes/auth";
 import crontabRoutes from "./routes/crontab";
+import { fleetRoutes } from "./routes/fleet";
+import type { FleetHub } from "./fleet/hub";
 import logsRoutes from "./routes/pitasker-logs";
 import systemRoutes from "./routes/system";
 import taskRoutes from "./routes/tasks";
@@ -23,6 +25,8 @@ export type AppOptions = {
   /** Directory with the built SPA (index.html); omit for API-only (tests). */
   staticDir?: string | null;
   sessionSecret?: string;
+  /** The fleet hub (tests inject one; default: from the environment, on first use). */
+  fleetHub?: FleetHub;
 };
 
 export function createApp(opts: AppOptions = {}): Express {
@@ -59,6 +63,7 @@ export function createApp(opts: AppOptions = {}): Express {
   app.use(taskRoutes);
   app.use(systemRoutes);
   app.use("/api/crontab", crontabRoutes);
+  app.use(opts.fleetHub ? fleetRoutes(() => opts.fleetHub!) : fleetRoutes());
   app.use("/api/pitasker-logs", logsRoutes);
   app.use("/api", (_req, res) => res.status(404).json({ message: "Not found" }));
 

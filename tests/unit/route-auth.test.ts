@@ -52,7 +52,7 @@ afterAll(() => server?.close());
 describe("every /api route requires a login", () => {
   it("finds the routes", () => {
     expect(routes.length).toBeGreaterThan(25);
-    for (const r of ["GET /api/tasks", "POST /api/tasks/:id/runner", "GET /api/crontab/", "POST /api/crontab/backups/:name/restore", "GET /api/pitasker-logs/file"]) {
+    for (const r of ["GET /api/tasks", "POST /api/tasks/:id/runner", "GET /api/crontab/", "POST /api/crontab/backups/:name/restore", "GET /api/pitasker-logs/file", "GET /api/fleet", "GET /api/fleet/:host"]) {
       expect(routes).toContain(r);
     }
   });
@@ -93,6 +93,12 @@ describe("request guards", () => {
   it("refuses a foreign Origin", async () => {
     const res = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body: "{}" });
     expect(res.status).toBe(403);
+  });
+
+  it("the fleet view is read-only: every /api/fleet route is a GET", () => {
+    const fleet = routes.filter((r) => r.includes("/api/fleet"));
+    expect(fleet.length).toBeGreaterThan(0);
+    expect(fleet.every((r) => r.startsWith("GET "))).toBe(true);
   });
 
   it("no /api path ends in .log (nginx answers 403 to those)", () => {
