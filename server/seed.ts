@@ -1,65 +1,42 @@
-import dotenv from 'dotenv';
-dotenv.config(); // Load .env variables first
-
-import bcrypt from 'bcrypt';
-import { Client } from 'pg';
+// npm run db:seed — create the admin user if there is none.
+//   PITASKER_ADMIN_PASSWORD set → that password (rules: server/auth.ts)
+//   otherwise                   → a random one, printed once
+// (1.x seeded a fixed password that was in the repository.)
+import "dotenv/config";
+import crypto from "crypto";
+import pg from "pg";
+import { hashPassword, passwordProblem } from "./auth";
 
 async function seed() {
-  const username = 'admin';
-  const password = 'AdminSecure@2025';
-
   if (!process.env.DATABASE_URL) {
-    console.error('DATABASE_URL is not set. Please check your .env file.');
+    console.error("DATABASE_URL is not set.");
     process.exit(1);
   }
-
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-  });
-
+  const username = process.env.PITASKER_ADMIN_USER || "admin";
+  const given = process.env.PITASKER_ADMIN_PASSWORD;
+  const password = given || crypto.randomBytes(18).toString("base64url");
+  const problem = given ? passwordProblem(given, { username }) : null;
+  if (problem) {
+    console.error(`PITASKER_ADMIN_PASSWORD: ${problem}`);
+    process.exit(1);
+  }
+  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
   try {
-    await client.connect();
-    console.log('Connected to database successfully for seeding.');
-
-    // Check if admin user already exists
-    const checkUserQuery = {
-      text: 'SELECT * FROM users WHERE username = $1',
-      values: [username],
-    };
-    const { rows } = await client.query(checkUserQuery);
-
+    const { rows } = await client.query("SELECT 1 FROM users WHERE username = $1", [username]);
     if (rows.length > 0) {
-      console.log('Admin user already exists. Skipping seeding.');
+      console.log(`User "${username}" already exists. Nothing to do.`);
       return;
     }
-
-    // Hash the password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Insert the admin user
-    // Note: Ensure the 'users' table and its columns ('username', 'password') exist.
-    // Drizzle schema defines it as:
-    // export const users = pgTable("users", {
-    //   id: serial("id").primaryKey(),
-    //   username: text("username").notNull().unique(),
-    //   password: text("password").notNull(),
-    // });
-    const insertUserQuery = {
-      text: 'INSERT INTO users (username, password) VALUES ($1, $2)',
-      values: [username, hashedPassword],
-    };
-    await client.query(insertUserQuery);
-
-    console.log('Admin user seeded successfully.');
-
-  } catch (error) {
-    console.error('Error seeding database:', error);
-    process.exit(1);
+    await client.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, await hashPassword(password)]);
+    console.log(`Created user "${username}".`);
+    if (!given) console.log(`Password (shown once): ${password}`);
   } finally {
     await client.end();
-    console.log('Database connection closed.');
   }
 }
 
-seed();
+seed().catch((e) => {
+  console.error("Seeding failed:", e.message);
+  process.exit(1);
+});

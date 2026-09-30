@@ -1,28 +1,26 @@
-import bcrypt from 'bcrypt';
-import { db } from './db';
-import { users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import bcrypt from "bcrypt";
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
-export async function hashPassword(password: string): Promise<string> {
+export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
 
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
+export function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
-export async function findUserByUsername(username: string) {
-  const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-  return result.length > 0 ? result[0] : null;
-}
+export const PASSWORD_MIN = 12;
+/** bcrypt uses only the first 72 bytes; longer passwords would silently be cut. */
+export const PASSWORD_MAX_BYTES = 72;
 
-export async function findUserById(userId: number) {
-  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  return result.length > 0 ? result[0] : null;
-}
-
-export async function updateUserPassword(userId: number, newPasswordHash: string) {
-  await db.update(users).set({ password: newPasswordHash }).where(eq(users.id, userId));
+/** The rules for a new password; null when it is acceptable. */
+export function passwordProblem(next: string, opts: { current?: string; username?: string } = {}): string | null {
+  if (typeof next !== "string" || next.length < PASSWORD_MIN) return `The new password must be at least ${PASSWORD_MIN} characters long.`;
+  if (Buffer.byteLength(next, "utf8") > PASSWORD_MAX_BYTES) return `The new password must be at most ${PASSWORD_MAX_BYTES} bytes long.`;
+  if (/^\s|\s$/.test(next)) return "The new password must not start or end with a space.";
+  if (opts.current !== undefined && next === opts.current) return "The new password must differ from the current one.";
+  if (opts.username && next.toLowerCase().includes(opts.username.toLowerCase())) return "The new password must not contain the username.";
+  if (new Set(next).size < 5) return "The new password is too repetitive.";
+  return null;
 }
