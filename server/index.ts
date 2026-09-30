@@ -21,6 +21,8 @@ const fatal = (msg: string): never => {
   process.exit(1);
 };
 
+if (process.env.PITASKER_MODE === "agent") fatal("PITASKER_MODE=agent: the agent is dist/agent.mjs (scripts/install-agent.sh), not the hub's dist/index.js");
+
 const secret = process.env.SESSION_SECRET ?? "";
 if (!secret) fatal("SESSION_SECRET is not set (.env). Generate one: openssl rand -hex 32");
 if (secret.length < 16) fatal("SESSION_SECRET is too short (min 16 characters; use openssl rand -hex 32)");
