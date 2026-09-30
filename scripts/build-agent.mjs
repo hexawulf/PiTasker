@@ -7,7 +7,7 @@
 //              node_modules or a non-node: import would end up in it.
 //              Also writes dist/agent.build-commit (git HEAD).
 // Modified:    2026-10-01
-// Usage:       node scripts/build-agent.mjs      (npm run build:agent)
+// Usage:       node scripts/build-agent.mjs [--outdir DIR]   (npm run build:agent; default dist/)
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,7 +17,9 @@ import { build } from "esbuild";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
-const outfile = path.join(root, "dist", "agent.mjs");
+const oi = process.argv.indexOf("--outdir");
+const outdir = oi > 0 ? path.resolve(process.argv[oi + 1]) : path.join(root, "dist");
+const outfile = path.join(outdir, "agent.mjs");
 let commit = "unknown";
 try {
   commit = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -50,5 +52,5 @@ if (fromModules.length || foreign.length) {
   console.error(`[build-agent] refused: the agent must be self-contained.\n  from node_modules: ${fromModules.join(", ") || "-"}\n  non-built-in imports: ${foreign.map((i) => i.path).join(", ") || "-"}`);
   process.exit(1);
 }
-fs.writeFileSync(path.join(root, "dist", "agent.build-commit"), `${commit}\n`);
-console.log(`[build-agent] dist/agent.mjs ${(fs.statSync(outfile).size / 1024).toFixed(1)} kB from ${inputs.length} files (${commit.slice(0, 7)})`);
+fs.writeFileSync(path.join(outdir, "agent.build-commit"), `${commit}\n`);
+console.log(`[build-agent] ${path.relative(root, outfile)} ${(fs.statSync(outfile).size / 1024).toFixed(1)} kB from ${inputs.length} files (${commit.slice(0, 7)})`);

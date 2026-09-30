@@ -33,11 +33,12 @@ const STATUS: Record<FleetHost["status"], { label: string; dot: string }> = {
   "version-mismatch": { label: "version mismatch", dot: "bg-pi-warning" },
 };
 
+// Outlined pills: token text on the card (the *-soft fills fall below AA on dark cards).
 const HINT_STYLE: Record<HintKind, string> = {
-  "same-job": "status-restart",
-  "not-in-bin": "status-offline",
-  "bin-differs": "status-restart",
-  disabled: "bg-pi-darker text-pi-text-muted",
+  "same-job": "border border-pi-warning text-pi-warning",
+  "not-in-bin": "border border-pi-error text-pi-error",
+  "bin-differs": "border border-pi-warning text-pi-warning",
+  disabled: "border border-pi-border text-pi-text-muted",
 };
 
 function HintBadges({ hints }: { hints: Row["hints"] }) {
@@ -79,7 +80,7 @@ function LastRun({ row }: { row: Row }) {
 
 function RowCard({ row, hubTz, showHost }: { row: Row; hubTz: string; showHost: boolean }) {
   return (
-    <li className={cn("min-w-0 rounded-lg border border-pi-border bg-pi-card p-3", row.disabled && "opacity-70")} data-testid="fleet-row" data-host={row.hostId} data-disabled={row.disabled || undefined}>
+    <li className={cn("min-w-0 rounded-lg border bg-pi-card p-3", row.disabled ? "border-dashed border-pi-border text-pi-text-muted" : "border-pi-border")} data-testid="fleet-row" data-host={row.hostId} data-disabled={row.disabled || undefined}>
       <div className="flex flex-wrap items-center gap-1.5 text-xs text-pi-text-muted">
         {showHost && <span className="font-semibold text-pi-text">{row.hostLabel}</span>}
         <span>{row.source}</span>
@@ -132,7 +133,7 @@ function JobsTable({ rows, hubTz }: { rows: Row[]; hubTz: string }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key} className={cn("border-b border-pi-border align-top last:border-0", (r.disabled || r.hostDown) && "opacity-70")} data-testid="fleet-table-row">
+              <tr key={r.key} className={cn("border-b border-pi-border align-top last:border-0", (r.disabled || r.hostDown) && "bg-pi-darker text-pi-text-muted")} data-testid="fleet-table-row">
                 <td className="whitespace-nowrap px-3 py-2 font-medium">{r.hostLabel}</td>
                 <td className="px-3 py-2 text-pi-text-muted">
                   {r.source}
@@ -147,7 +148,7 @@ function JobsTable({ rows, hubTz }: { rows: Row[]; hubTz: string }) {
                 <td className="whitespace-nowrap px-3 py-2">
                   <LastRun row={r} />
                 </td>
-                <td className="max-w-[28rem] px-3 py-2">
+                <td className="min-w-[18rem] px-3 py-2">
                   <code className="break-all font-mono text-xs">{r.command}</code>
                   {r.editableHere && (
                     <Link href="/crontab" className="ml-2 text-xs text-pi-accent-text underline-offset-2 hover:underline">
@@ -184,13 +185,13 @@ function HostChip({ host, active, onClick, binDiffers }: { host: FleetHost; acti
       data-testid="host-chip"
       data-host={host.id}
       data-status={host.status}
-      className={cn("min-w-0 rounded-xl border bg-pi-card p-3 text-left text-sm transition-colors", active ? "border-pi-accent" : "border-pi-border hover:bg-pi-card-hover", !UP.has(host.status) && "opacity-80")}
+      className={cn("min-w-0 rounded-xl border bg-pi-card p-3 text-left text-sm transition-colors", active ? "border-pi-accent" : "border-pi-border hover:bg-pi-card-hover", !UP.has(host.status) && "border-dashed")}
     >
       <span className="flex flex-wrap items-center gap-2">
         <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", st.dot)} aria-hidden />
         <span className="font-semibold">{host.label}</span>
         {host.local && <span className={cn(pill, "bg-pi-darker text-pi-text-muted")}>hub</span>}
-        {host.production && <span className={cn(pill, "status-offline")}>production</span>}
+        {host.production && <span className={cn(pill, "border border-pi-error text-pi-error")}>production</span>}
         <span className="text-xs text-pi-text-muted">{st.label}</span>
       </span>
       <span className="mt-1 block text-xs text-pi-text-muted">
@@ -216,7 +217,7 @@ function HostSection({ host, rows, hubTz, filtered }: { host: FleetHost; rows: R
   const down = !UP.has(host.status);
   if (filtered && rows.length === 0) return null;
   return (
-    <section className={cn("rounded-xl border border-pi-border bg-pi-dark", down && "opacity-80")} aria-labelledby={`fleet-${host.id}`} data-testid="host-section" data-host={host.id}>
+    <section className={cn("rounded-xl border border-pi-border bg-pi-dark", down && "border-dashed")} aria-labelledby={`fleet-${host.id}`} data-testid="host-section" data-host={host.id}>
       <h3 id={`fleet-${host.id}`}>
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-2 rounded-t-xl bg-pi-card px-4 py-3 text-left">
           <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} aria-hidden />
@@ -225,7 +226,7 @@ function HostSection({ host, rows, hubTz, filtered }: { host: FleetHost; rows: R
             {rows.length} job{rows.length === 1 ? "" : "s"} · {host.tz ?? ""}
           </span>
           {down && (
-            <span className={cn(pill, "status-offline")}>
+            <span className={cn(pill, "border border-pi-error text-pi-error")}>
               {STATUS[host.status].label}
               {host.asOf ? ` · as of ${formatDateTime(host.asOf)}` : " · no data"}
             </span>
@@ -323,7 +324,7 @@ export default function FleetPage() {
           <div className="flex flex-wrap gap-2 text-xs" aria-label="Hints">
             {(Object.keys(counts) as HintKind[]).map((k) =>
               counts[k] ? (
-                <button key={k} type="button" onClick={() => setF({ hint: f.hint === k ? "" : k })} aria-pressed={f.hint === k} className={cn(pill, HINT_STYLE[k], "border", f.hint === k ? "border-pi-accent" : "border-transparent")} data-testid={`hint-${k}`}>
+                <button key={k} type="button" onClick={() => setF({ hint: f.hint === k ? "" : k })} aria-pressed={f.hint === k} className={cn(pill, HINT_STYLE[k], f.hint === k && "ring-2 ring-pi-accent")} data-testid={`hint-${k}`}>
                   {counts[k]} {HINT_LABEL[k]}
                 </button>
               ) : null,
