@@ -3,7 +3,18 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [Unreleased] — 2.0.0 (P1 + P2), branch `feat/2.0-p1p2`
+## [Unreleased] — 2.0.0 (P1 + P2), live on piapps since 2026-09-30
+
+### Added
+- **About dialog** (ⓘ in the header, like PiDeck's): tech stack, contact,
+  repo, version and release date, and a copyable diagnostics line (version,
+  user@host, time zone, tasks per runner, cron journal, RSS, theme, viewport)
+- README: version line, screenshot (demo crontab), what's new, roadmap
+
+### Changed
+- E2E: toast assertions look inside the toast region only (`toastText()`);
+  Radix copies the text into a short-lived `role="status"` announcement, and
+  a page-wide `getByText` could match both (strict-mode flake)
 
 ### Fixed
 - **Jobs ran twice** (hotfix `0b12891` on main, now a tested model): a task

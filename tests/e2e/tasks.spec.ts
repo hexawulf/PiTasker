@@ -1,4 +1,4 @@
-import { CURATED, crontab, expect, test } from "./helpers";
+import { CURATED, crontab, expect, test, toastText } from "./helpers";
 
 test("create a crontab task: diff first, then only the new lines are added", async ({ page }) => {
   await page.goto("/tasks");
@@ -124,6 +124,6 @@ test("a backup restores the previous crontab", async ({ page }) => {
   await page.goto("/crontab");
   await page.getByTestId("backups").getByRole("button", { name: /Restore/ }).first().click();
   await page.getByTestId("diff-confirm").click();
-  await expect(page.getByText("Crontab restored")).toBeVisible();
+  await expect(toastText(page, "Crontab restored")).toBeVisible();
   await expect.poll(crontab).toBe(CURATED);
 });

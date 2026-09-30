@@ -1,4 +1,4 @@
-import { CURATED, crontab, expect, test } from "./helpers";
+import { CURATED, crontab, expect, test, toastText } from "./helpers";
 
 test("the crontab view shows every line as written", async ({ page }) => {
   await page.goto("/crontab");
@@ -16,11 +16,11 @@ test("import reads the crontab without changing it; export of the same is a no-o
   await expect(dlg.getByText("new", { exact: true })).toHaveCount(7);
   await expect(dlg.getByText("disabled", { exact: true })).toHaveCount(2);
   await dlg.getByTestId("import-confirm").click();
-  await expect(page.getByText("7 new, 0 updated")).toBeVisible();
+  await expect(toastText(page, "7 new, 0 updated")).toBeVisible();
   expect(crontab()).toBe(CURATED);
 
   await page.getByTestId("crontab-export").click();
-  await expect(page.getByText("Already in sync")).toBeVisible();
+  await expect(toastText(page, "Already in sync")).toBeVisible();
   await expect(page.getByTestId("diff-dialog")).toHaveCount(0);
   expect(crontab()).toBe(CURATED);
 

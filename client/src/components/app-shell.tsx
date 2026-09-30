@@ -2,6 +2,7 @@ import { useEffect, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { FileText, Keyboard, ListChecks, ListTodo, LogOut, RefreshCw, SettingsIcon, TerminalSquare } from "lucide-react";
+import AboutModal from "@/components/about-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -82,6 +83,7 @@ export default function AppShell({ tab }: { tab: string }) {
             </div>
 
             <div className="flex items-center space-x-2">
+              <AboutModal />
               <HeaderButton label="Keyboard shortcuts (?)" onClick={openHelp}>
                 <Keyboard className="h-5 w-5" />
               </HeaderButton>

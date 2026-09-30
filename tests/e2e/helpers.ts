@@ -33,6 +33,15 @@ export async function resetState(crontab: string = CURATED) {
 export const crontab = () => fs.readFileSync(CRONTAB, "utf8");
 
 /** No horizontal page scroll (mobile layout check). */
+/**
+ * Text in a toast. Scoped to the toast region: Radix also copies the text
+ * into a short-lived role="status" announcement, and a page-wide getByText
+ * then matches twice (strict-mode violation) if it looks at the wrong moment.
+ */
+export function toastText(page: Page, text: string | RegExp) {
+  return page.getByRole("region", { name: /Notifications/ }).getByText(text);
+}
+
 export async function expectNoHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);

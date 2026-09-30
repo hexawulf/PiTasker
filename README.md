@@ -5,8 +5,31 @@ user's crontab from a web UI, and let PiTasker itself run the jobs that
 should not live in cron. Runs on piapps as the pm2 app `pitasker`
 (<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
 
-Version 2.0 (this branch) is a fix-and-refresh release; the plan, including
-the fleet view (P3) and fleet editing (P4), is in [docs/plans/2.0.md](docs/plans/2.0.md).
+**Current version: 2.0** — live on piapps since 2026-09-30 (tagged 2.0.0 once
+the CSP has run a day in enforce mode). A fix-and-refresh release: one runner
+per job, a crontab that stays exactly as you wrote it, a diff before every
+write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md)
+and the [2.0 plan](docs/plans/2.0.md).
+
+![PiTasker 2.0 — Tasks (light theme, demo crontab)](docs/screenshots/tasks.png)
+
+## What's new in 2.0
+
+- **No more double runs**: 1.x ran every imported crontab job a second time
+  from its own scheduler (in UTC). Now a job runs from the crontab *or* from
+  PiTasker, and the UI says which.
+- **Your crontab stays yours**: comments, sections, env and disabled lines
+  survive byte-for-byte; writes go through `crontab -` without a shell, with
+  a diff first, a backup before and a read-back after.
+- **Run history**: exit code, duration, stdout and stderr for every run
+  PiTasker starts; last start of cron jobs from their log or the cron journal.
+- **Security**: login on every `/api` route (tested), rate-limited login,
+  helmet + CSP, CSRF guard, SameSite=Lax cookie; Firebase and 11 npm audit
+  findings gone.
+- **UI**: the PiDeck 2.0 design language (light/dark, mobile, keyboard
+  shortcuts, axe-checked), plain-language schedules with the next runs, and
+  an **About** dialog (ⓘ in the header: version, stack, repo and a one-line
+  diagnostics string to paste into bug reports).
 
 ## What it does
 
@@ -40,7 +63,8 @@ the fleet view (P3) and fleet editing (P4), is in [docs/plans/2.0.md](docs/plans
 
 React 18 + Vite + Tailwind (PiDeck 2.0 tokens) · Express 4 · PostgreSQL
 (drizzle-orm, migrations in `migrations/`) · node-cron · Node 22.
-Memory: about 120–135 MB RSS on piapps (pm2 limit 256 MB).
+Memory on piapps: about 115–120 MB RSS steady, ~220 MB briefly at start
+(pm2 restarts it above 256 MB).
 
 ## Setup
 
@@ -104,6 +128,17 @@ shared/schema.ts   tables and validation
 migrations/        drizzle SQL; scripts/migrate*.mjs apply them
 docs/plans/2.0.md  the 2.0 plan; docs/archive/ the 1.x notes
 ```
+
+## Roadmap
+
+From [docs/plans/2.0.md](docs/plans/2.0.md), after 2.0:
+
+- **P3 — fleet view (read-only)**: every homelab host's zk and root
+  crontabs, `/etc/cron.d` and systemd timers in one screen.
+- **P4 — fleet editing**: edit the zk crontab on piapps2, piapps3, piapps4
+  and hwca-ap02 through a small, separate PiTasker agent (own token,
+  LAN/WireGuard only, diff + backup + audit for every write). Root crontabs
+  and `/etc/cron.d` stay read-only until a later opt-in.
 
 ## License
 
