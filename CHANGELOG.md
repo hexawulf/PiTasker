@@ -77,8 +77,10 @@ All notable changes to PiTasker. Versions follow semver per phase
 3. Back up the database: `pg_dump -Fc pitasker > ~/backups/pitasker-$(date +%F).dump`.
 4. `pm2 stop pitasker` (1.x must not write the crontab during the switch).
 5. In `/home/zk/projects/PiTasker`: check out the reviewed commit, `npm ci`.
-6. `.env`: remove the `VITE_FIREBASE_*` lines; add `CSP_ENFORCE=false`,
-   `PITASKER_CLOUDFLARE=1`; make sure `SESSION_SECRET` has ≥ 32 characters
+6. `.env`: remove the `VITE_FIREBASE_*` lines; add `CSP_ENFORCE=false`
+   (not `PITASKER_CLOUDFLARE`: piapps' nginx already restores the client IP
+   from Cloudflare, so `req.ip` is right and the header would be trusted
+   from anyone reaching the origin); make sure `SESSION_SECRET` has ≥ 32 characters
    (`openssl rand -hex 32`; everyone is logged out if it changes).
 7. `npm run db:status` (expect "baseline mark first"), then `npm run db:migrate`.
 8. `npm run build`.

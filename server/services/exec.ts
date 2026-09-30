@@ -7,7 +7,9 @@
 //   timeout ─► SIGTERM to the whole group, SIGKILL 5 s later
 //   result  ─► status success | failed | timeout, exit code, signal, duration
 import { spawn } from "child_process";
+import fs from "fs";
 import os from "os";
+import path from "path";
 
 export type ExecResult = {
   status: "success" | "failed" | "timeout";
@@ -64,13 +66,29 @@ export function crontabEnvVars(lines: { kind: string; raw: string }[]): Record<s
 }
 
 /** What cron gives a job: no PiTasker secrets (SESSION_SECRET, DATABASE_URL …) ever reach it. */
+/**
+ * A job's stdin as a real file (the % text), never a socket. Node's "pipe"
+ * is a socketpair, and bash takes a socket on stdin for sshd and sources
+ * ~/.bashrc (interactive PATH, aliases) — cron never does that.
+ */
+function stdinFile(text: string): number {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pitasker-stdin-"));
+  try {
+    const file = path.join(dir, "stdin");
+    fs.writeFileSync(file, text, { mode: 0o600 });
+    return fs.openSync(file, "r");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true }); // the open fd keeps the data
+  }
+}
+
 export function jobEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {
     HOME: env.HOME || os.homedir(),
     LOGNAME: env.LOGNAME || env.USER || os.userInfo().username,
     USER: env.USER || os.userInfo().username,
     SHELL: "/bin/sh",
-    PATH: env.PATH || "/usr/bin:/bin",
+    PATH: "/usr/bin:/bin", // cron's default; a crontab PATH= line overrides it
   };
   for (const k of ["LANG", "LC_ALL", "TZ"]) if (env[k]) out[k] = env[k];
   return out;
@@ -106,12 +124,18 @@ export function execCommand(command: string, opts: ExecOptions): Promise<ExecRes
     let done = false;
     const env = { ...jobEnv(), ...(opts.crontabEnv ?? {}) };
     const shell = env.SHELL && env.SHELL.startsWith("/") ? env.SHELL : "/bin/sh";
-    const child = spawn(shell, ["-c", cmd], {
-      detached: true, // own process group: a timeout kills everything the job started
-      cwd: opts.cwd ?? env.HOME,
-      env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    const stdinFd = stdin === null ? null : stdinFile(stdin);
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(shell, ["-c", cmd], {
+        detached: true, // own process group: a timeout kills everything the job started
+        cwd: opts.cwd ?? env.HOME,
+        env,
+        stdio: [stdinFd ?? "ignore", "pipe", "pipe"],
+      });
+    } finally {
+      if (stdinFd !== null) fs.closeSync(stdinFd); // the child has its own copy
+    }
     const killGroup = (sig: NodeJS.Signals) => {
       try {
         if (child.pid) process.kill(-child.pid, sig);
@@ -143,14 +167,12 @@ export function execCommand(command: string, opts: ExecOptions): Promise<ExecRes
       });
     };
 
-    child.stdout.on("data", (d) => out.push(d));
-    child.stderr.on("data", (d) => err.push(d));
+    child.stdout!.on("data", (d) => out.push(d));
+    child.stderr!.on("data", (d) => err.push(d));
     child.on("error", (e) => finish(null, null, e));
     // "close" waits for the pipes; a job that leaves a background child holding
     // them open is reported 2 s after the shell itself exited.
     child.on("exit", (code, signal) => setTimeout(() => finish(code, signal), 2_000).unref());
     child.on("close", (code, signal) => finish(code, signal));
-    child.stdin.on("error", () => undefined);
-    child.stdin.end(stdin ?? "");
   });
 }

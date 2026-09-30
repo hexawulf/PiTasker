@@ -67,7 +67,8 @@ variables are gone.
 Login required for every `/api` route except login itself (a test walks the
 router to enforce it). Login and password changes are rate-limited
 (10 / 10 min per client; `PITASKER_CLOUDFLARE=1` counts per
-CF-Connecting-IP). Session cookie `pitasker.sid`: Secure, HttpOnly,
+CF-Connecting-IP — only when the proxy in front does *not* already restore the
+client IP; piapps' nginx does, so it stays off there). Session cookie `pitasker.sid`: Secure, HttpOnly,
 SameSite=Lax, new id at login. State-changing requests must be same-origin
 JSON. helmet headers and a CSP with hashes of the inline scripts (Report-Only
 until `CSP_ENFORCE=true`; violations are logged as `[csp]` lines). New

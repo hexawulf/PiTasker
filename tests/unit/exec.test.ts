@@ -82,6 +82,14 @@ describe("crontab env lines", () => {
     expect(crontabEnvVars(lines)).toEqual({ SHELL: "/bin/bash", PATH: "/home/zk/bin:/usr/bin:/bin", FOO: "bar baz" });
   });
 
+  it("stdin is never a socket (bash would source ~/.bashrc), with or without % input", async () => {
+    const probe = '[ -S /dev/stdin ] && echo socket || echo not-a-socket; cat';
+    const none = await execCommand(probe, { ...opts, crontabEnv: { SHELL: "/bin/bash" } });
+    expect(none.stdout).toBe("not-a-socket\n");
+    const withInput = await execCommand(`${probe}%line one%line two`, { ...opts, crontabEnv: { SHELL: "/bin/bash" } });
+    expect(withInput.stdout).toBe("not-a-socket\nline one\nline two\n");
+  });
+
   it("runs with the crontab's SHELL and PATH", async () => {
     const r = await execCommand('echo "$0|$PATH|$FOO"', { ...opts, crontabEnv: { SHELL: "/bin/bash", PATH: "/usr/bin:/bin", FOO: "x" } });
     expect(r.stdout).toBe("/bin/bash|/usr/bin:/bin|x\n");
