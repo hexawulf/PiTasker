@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────────────────────
+# zk crontab — piapps (hand-curated)
+# Audit: 2026-09-12 — every script lives in /home/zk/bin (bin.git)
+# Rule: commit the script BEFORE the job goes live.
+# ─────────────────────────────────────────────────────────────
+SHELL=/bin/bash
+PATH=/home/zk/bin:/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+TZ=Asia/Taipei
+
+# ── Monitoring ────────────────────────────────────────────────
+*/5 * * * * /home/zk/bin/linuxsvr-status-poll >> /home/zk/logs/linuxsvr-status-poll.log 2>&1
+*/15  *  * * *   /home/zk/bin/disk-watch --quiet
+# PITASKER_ID:0b5a2c1e-6f7d-4e3a-9c1b-2a3d4e5f6a7b
+# PITASKER_COMMENT:Nightly DB backup
+4 7 * * * /home/zk/bin/pg-backup pitasker >> /home/zk/logs/pg-backup.log 2>&1
+
+# ── Housekeeping ──────────────────────────────────────────────
+@reboot /home/zk/bin/on-boot-notify
+@daily /home/zk/bin/rotate-reports
+0 3 * * 1-5 /home/zk/bin/report --date "$(date +\%Y-\%m-\%d)" > /home/zk/logs/report-$(date +\%F).log 2>&1
+30 2 1 * * echo "monthly" | /home/zk/bin/mailer %subject line%body
+
+# DISABLED 2026-08-01 (moved to piapps2): */10 * * * * /home/zk/bin/old-sync
+#0 4 * * 0 /home/zk/bin/weekly-legacy
+# a normal comment that mentions 5 things
