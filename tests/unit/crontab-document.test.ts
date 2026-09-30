@@ -165,3 +165,37 @@ describe("edits touch only their own lines", () => {
     expect(next).toBe(CURATED.replace("@daily /home/zk/bin/rotate-reports\n", ""));
   });
 });
+
+describe("system crontabs (/etc/crontab, /etc/cron.d: a user field)", () => {
+  const fleet = path.join(__dirname, "..", "fixtures", "fleet");
+  const files = ["alpha/etc/crontab", "alpha/etc/cron.d/e2scrub_all", "alpha/etc/cron.d/sysstat", "alpha/etc/cron.d/zk-extra", "beta/etc/cron.d/certbot", "beta/etc/crontab"];
+  for (const f of files) {
+    it(`round-trips byte-identically: ${f}`, () => {
+      const text = fs.readFileSync(path.join(fleet, f), "utf8");
+      expect(serializeCrontab(parseCrontab(text, { system: true }))).toBe(text);
+    });
+  }
+
+  it("reads the user field (tabs, macros, disabled lines)", () => {
+    const doc = parseCrontab(
+      "17 *\t* * *\troot\tcd / && run-parts --report /etc/cron.hourly\n@reboot zk /home/zk/bin/x\n# 0 3 * * * www-data /usr/bin/php cron.php\n5 * * * * bad user! x\n",
+      { system: true },
+    );
+    expect(doc.lines.map((l) => [l.kind, l.schedule, l.user, l.command])).toEqual([
+      ["job", "17 * * * *", "root", "cd / && run-parts --report /etc/cron.hourly"],
+      ["job", "@reboot", "zk", "/home/zk/bin/x"],
+      ["disabled", "0 3 * * *", "www-data", "/usr/bin/php cron.php"],
+      ["job", "5 * * * *", "bad", "user! x"],
+    ]);
+  });
+
+  it("a line with no command after the user is invalid", () => {
+    expect(parseCrontab("0 * * * * root\n", { system: true }).lines[0].kind).toBe("invalid");
+  });
+
+  it("user mode is unchanged: the user field stays part of the command", () => {
+    const [l] = parseCrontab("17 * * * * root run-parts x\n").lines;
+    expect(l).toMatchObject({ kind: "job", command: "root run-parts x" });
+    expect(l.user).toBeUndefined();
+  });
+});

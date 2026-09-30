@@ -1,0 +1,2 @@
+# ignored by run-parts
+0 0 * * * root /bin/false

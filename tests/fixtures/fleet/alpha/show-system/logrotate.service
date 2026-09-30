@@ -1,0 +1,5 @@
+Id=logrotate.service
+User=
+ExecStart={ path=/usr/sbin/logrotate ; argv[]=/usr/sbin/logrotate /etc/logrotate.conf ; ignore_errors=no ; start_time=[Wed 2026-09-30 08:00:00 CST] ; stop_time=[Wed 2026-09-30 08:00:01 CST] ; pid=4242 ; code=exited ; status=0 }
+Result=success
+ExecMainStatus=0

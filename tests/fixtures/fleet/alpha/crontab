@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────
+# zk crontab — alpha (fixture, systemd 259, Asia/Taipei)
+# ─────────────────────────────────────────────
+SHELL=/bin/bash
+PATH=@HOME@/bin:/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+HC_TOKEN=supersecret-token-value
+
+# ── Monitoring ──────────────────────────────────
+*/5 * * * * @HOME@/bin/status-poll >> @HOME@/logs/status-poll.log 2>&1
+0 3 * * * API_KEY=abc123def @HOME@/bin/backup-db --verbose
+15 * * * * ~/bin/untracked-job
+30 4 * * 1 @HOME@/bin/dirty-job
+0 5 * * * @HOME@/scripts/outside-bin.sh
+@reboot @HOME@/bin/on-boot
+0 6 * * * curl -fsS -m 10 https://hc-ping.com/abc -H 'Authorization: Bearer hcpingtoken123'
+
+CRON_TZ=Europe/Berlin
+0 9 * * * @HOME@/bin/berlin-report
+# DISABLED 2026-08-01 (moved to beta): */10 * * * * @HOME@/bin/old-sync

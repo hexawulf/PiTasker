@@ -1,0 +1,30 @@
+#!/bin/sh
+# Author:      0xWulf (zk@hexawulf.dev)
+# Description: A fake `systemctl` for tests (never the real one). Answers the
+#              read calls the fleet collector makes from fixture files in
+#              $FAKE_FLEET_DIR; logs every argv to $FAKE_FLEET_LOG.
+#                [--user] list-timers --all -o json --no-pager → timers-{system,user}.json
+#                [--user] show -p … -- UNIT…                  → show-{system,user}/UNIT, blank-line separated
+#              Anything else (start, stop, enable …) fails with exit 3.
+# Modified:    2026-10-01
+set -eu
+d="${FAKE_FLEET_DIR:?FAKE_FLEET_DIR is not set: refusing to act as systemctl}"
+[ -n "${FAKE_FLEET_LOG:-}" ] && echo "systemctl $*" >> "$FAKE_FLEET_LOG"
+scope=system
+if [ "${1:-}" = "--user" ]; then scope=user; shift; fi
+case "${1:-}" in
+  list-timers)
+    f="$d/timers-$scope.json"
+    if [ -f "$f" ]; then cat "$f"; else echo "Failed to connect to bus: No medium found" >&2; exit 1; fi ;;
+  show)
+    shift
+    while [ $# -gt 0 ] && [ "$1" != "--" ]; do shift; done
+    [ "${1:-}" = "--" ] && shift
+    first=1
+    for u in "$@"; do
+      [ "$first" = 1 ] || echo
+      first=0
+      if [ -f "$d/show-$scope/$u" ]; then cat "$d/show-$scope/$u"; else echo "Id=$u"; fi
+    done ;;
+  *) echo "fake systemctl: refusing '$*' (read-only fake)" >&2; exit 3 ;;
+esac

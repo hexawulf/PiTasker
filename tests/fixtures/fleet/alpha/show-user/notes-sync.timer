@@ -1,0 +1,3 @@
+Id=notes-sync.timer
+TimersCalendar=
+TimersMonotonic={ OnUnitActiveUSec=15min ; next_elapse=0 }

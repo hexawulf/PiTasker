@@ -1,4 +1,7 @@
-// Per test file: a fake crontab first on PATH and scratch state/log dirs.
+// Per test file: the fakes (crontab, systemctl, journalctl, timedatectl) first
+// on PATH and scratch state/log dirs. The fleet collector refuses to run a
+// guarded tool from anywhere but PITASKER_FAKE_BIN_DIR, and refuses the real
+// /etc, /home/zk/bin and /var/lib/pitasker paths (server/fleet/tools.ts).
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -7,7 +10,8 @@ const root = path.resolve(__dirname, "..", "..");
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "pitasker-unit-"));
 const bin = path.join(scratch, "bin");
 fs.mkdirSync(bin);
-fs.symlinkSync(path.join(root, "tests", "fake-crontab.sh"), path.join(bin, "crontab"));
+for (const f of fs.readdirSync(path.join(root, "tests", "fakes"))) fs.symlinkSync(path.join(root, "tests", "fakes", f), path.join(bin, f));
+process.env.PITASKER_FAKE_BIN_DIR = bin;
 
 process.env.PATH = `${bin}:${process.env.PATH}`;
 process.env.PITASKER_CRONTAB_BIN = path.join(bin, "crontab");

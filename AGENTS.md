@@ -19,7 +19,7 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
 ## Rules
 
 - **Never run the real `crontab` or touch a real database from tests.** Use
-  the fake (`tests/fake-crontab.sh`, `FAKE_CRONTAB_FILE`) and scratch
+  the fake (`tests/fakes/crontab`, `FAKE_CRONTAB_FILE`) and scratch
   databases (`pitasker_test_*`, `pitasker_e2e`). The code enforces this
   under `VITEST` / `PITASKER_E2E`; don't weaken those guards.
 - **Crontab edits go through `server/crontab/`.** `document.ts` keeps every

@@ -1,0 +1,4 @@
+Id=pitasker-root-cron-snapshot.timer
+TimersCalendar=
+TimersMonotonic={ OnUnitActiveUSec=15min ; next_elapse=0 }
+TimersMonotonic={ OnBootUSec=2min ; next_elapse=0 }

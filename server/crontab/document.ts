@@ -13,6 +13,12 @@
 //
 // Only jobs are imported as tasks. Disabled lines are shown, never re-enabled
 // by an export (see upsertJob).
+//
+// System mode ({ system: true }: /etc/crontab, /etc/cron.d/*) — every job has a
+// user field between the schedule and the command:
+//   17 * * * * root cd / && run-parts --report /etc/cron.hourly   → user "root"
+//   @reboot    root /usr/local/bin/x                              → user "root"
+// The fleet view (server/fleet/collector.ts) reads those; nothing writes them.
 import { createHash } from "crypto";
 import { parseCron } from "@shared/cron";
 
@@ -35,7 +41,11 @@ export type CronLine = {
   value?: string;
   /** env: variable name. */
   envName?: string;
+  /** job/disabled in system mode: the user field. */
+  user?: string;
 };
+
+export type ParseMode = { system?: boolean };
 
 export type CrontabDoc = { lines: CronLine[]; trailingNewline: boolean };
 
@@ -55,10 +65,23 @@ export type Job = {
 const ENV_RE = /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=/;
 const FIVE_RE = /^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S.*)$/;
 const MACRO_RE = /^\s*(@[A-Za-z]+)\s+(\S.*)$/;
+const SYS_FIVE_RE = /^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S.*)$/;
+const SYS_MACRO_RE = /^\s*(@[A-Za-z]+)\s+(\S+)\s+(\S.*)$/;
+const USER_RE = /^[A-Za-z_][A-Za-z0-9_.-]*\$?$/;
 
-/** Parse "schedule command" (a job line without comment prefix); null if it isn't one. */
-export function parseJobText(text: string): { schedule: string; command: string } | null {
+type JobText = { schedule: string; command: string; user?: string };
+
+/** Parse "schedule [user] command" (a job line without comment prefix); null if it isn't one. */
+export function parseJobText(text: string, mode: ParseMode = {}): JobText | null {
   const t = text.replace(/\r$/, "");
+  if (mode.system) {
+    const macro = SYS_MACRO_RE.exec(t);
+    if (macro) return parseCron(macro[1]).ok && USER_RE.test(macro[2]) ? { schedule: macro[1], user: macro[2], command: macro[3] } : null;
+    const m = SYS_FIVE_RE.exec(t);
+    if (!m || !USER_RE.test(m[6])) return null;
+    const schedule = m.slice(1, 6).join(" ");
+    return parseCron(schedule).ok ? { schedule, user: m[6], command: m[7] } : null;
+  }
   const macro = MACRO_RE.exec(t);
   if (macro) {
     return parseCron(macro[1]).ok ? { schedule: macro[1], command: macro[2] } : null;
@@ -74,34 +97,34 @@ export function parseJobText(text: string): { schedule: string; command: string 
  * "# DISABLED 2026-05-01 (reason): 0 3 * * * cmd". For DISABLED lines the job
  * may start after any word boundary; the earliest valid parse wins.
  */
-function parseDisabled(raw: string): { schedule: string; command: string } | null {
+function parseDisabled(raw: string, mode: ParseMode): JobText | null {
   const body = raw.replace(/^\s*#+\s*/, "");
   if (body.startsWith("PITASKER_")) return null;
-  const direct = parseJobText(body);
+  const direct = parseJobText(body, mode);
   if (direct) return direct;
   if (!/^DISABLED\b/i.test(body)) return null;
   for (let i = 8; i < body.length; i++) {
     const prev = body[i - 1];
     if (!(prev === " " || prev === ":" || prev === "\t")) continue;
     if (!/[\d*@]/.test(body[i])) continue;
-    const j = parseJobText(body.slice(i));
+    const j = parseJobText(body.slice(i), mode);
     if (j) return j;
   }
   return null;
 }
 
-export function classify(raw: string): CronLine {
+export function classify(raw: string, mode: ParseMode = {}): CronLine {
   const t = raw.replace(/\r$/, "");
   if (t.trim() === "") return { raw, kind: "blank" };
   const trimmed = t.trimStart();
   if (trimmed.startsWith(ID_MARKER)) return { raw, kind: "marker", marker: "id", value: trimmed.slice(ID_MARKER.length).trim() };
   if (trimmed.startsWith(NAME_MARKER)) return { raw, kind: "marker", marker: "name", value: trimmed.slice(NAME_MARKER.length).trim() };
   if (trimmed.startsWith("#")) {
-    const d = parseDisabled(t);
+    const d = parseDisabled(t, mode);
     return d ? { raw, kind: "disabled", ...d } : { raw, kind: "comment" };
   }
   if (ENV_RE.test(t)) return { raw, kind: "env", envName: t.split("=")[0].trim() };
-  const j = parseJobText(t);
+  const j = parseJobText(t, mode);
   return j ? { raw, kind: "job", ...j } : { raw, kind: "invalid" };
 }
 
@@ -123,11 +146,11 @@ function attachMarkers(lines: CronLine[]): void {
   }
 }
 
-export function parseCrontab(text: string): CrontabDoc {
+export function parseCrontab(text: string, mode: ParseMode = {}): CrontabDoc {
   if (text === "") return { lines: [], trailingNewline: false };
   const trailingNewline = text.endsWith("\n");
   const body = trailingNewline ? text.slice(0, -1) : text;
-  const lines = body.split("\n").map(classify);
+  const lines = body.split("\n").map((l) => classify(l, mode));
   attachMarkers(lines);
   return { lines, trailingNewline };
 }

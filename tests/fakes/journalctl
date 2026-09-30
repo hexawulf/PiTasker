@@ -1,0 +1,12 @@
+#!/bin/sh
+# Author:      0xWulf (zk@hexawulf.dev)
+# Description: A fake `journalctl` for tests: prints $FAKE_FLEET_DIR/journal.json
+#              (JSON lines as `-o json` gives them), whatever the arguments.
+#              FAKE_JOURNAL_FAIL=1 → exit 1 (not in the adm group).
+# Modified:    2026-10-01
+set -eu
+d="${FAKE_FLEET_DIR:?FAKE_FLEET_DIR is not set: refusing to act as journalctl}"
+[ -n "${FAKE_FLEET_LOG:-}" ] && echo "journalctl $*" >> "$FAKE_FLEET_LOG"
+if [ -n "${FAKE_JOURNAL_FAIL:-}" ]; then echo "No journal files were opened due to insufficient permissions." >&2; exit 1; fi
+[ -f "$d/journal.json" ] && cat "$d/journal.json"
+exit 0

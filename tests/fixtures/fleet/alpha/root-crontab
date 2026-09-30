@@ -1,0 +1,3 @@
+# root crontab (fixture, from the root-owned snapshot unit)
+0 2 * * 0 /usr/local/sbin/fstrim-all
+@reboot /usr/local/sbin/set-leds --off

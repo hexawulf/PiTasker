@@ -4,7 +4,7 @@
 #              Playwright suite. Never touches prod: not dist/ (pm2 serves
 #              that on :5007), not the pitasker database (a scratch
 #              pitasker_e2e is re-created from PITASKER_TEST_PG_URL), not the
-#              real crontab (tests/fake-crontab.sh is first on PATH as
+#              real crontab (tests/fakes/crontab is first on PATH as
 #              `crontab`, FAKE_CRONTAB_FILE=.e2e/crontab; PITASKER_E2E=1 makes
 #              the server refuse to run without it).
 #              The admin password is random, in .e2e/password.
@@ -34,7 +34,7 @@ npx esbuild server/index.ts --platform=node --packages=external --bundle --forma
 
 # Fake crontab, state, logs, a bin.git with one committed script.
 mkdir -p "$E2E/fake-bin" "$E2E/state" "$E2E/logs"
-ln -sf "$ROOT/tests/fake-crontab.sh" "$E2E/fake-bin/crontab"
+ln -sf "$ROOT/tests/fakes/crontab" "$E2E/fake-bin/crontab"
 cp "$ROOT/tests/fixtures/crontab.curated" "$E2E/crontab"
 rm -rf "$E2E/state/crontab-backups"
 printf '2026-09-30T08:00:00Z [express] PiTasker started\n2026-09-30T08:00:01Z [scheduler] ok\n' > "$E2E/logs/pitasker-$(date +%F).log"

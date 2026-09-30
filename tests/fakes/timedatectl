@@ -1,0 +1,12 @@
+#!/bin/sh
+# Author:      0xWulf (zk@hexawulf.dev)
+# Description: A fake `timedatectl` for tests: `show -p Timezone --value`
+#              prints $FAKE_FLEET_DIR/timezone (missing → exit 1, like a host
+#              without systemd-timedated).
+# Modified:    2026-10-01
+set -eu
+d="${FAKE_FLEET_DIR:?FAKE_FLEET_DIR is not set: refusing to act as timedatectl}"
+[ -n "${FAKE_FLEET_LOG:-}" ] && echo "timedatectl $*" >> "$FAKE_FLEET_LOG"
+if [ "$*" = "show -p Timezone --value" ] && [ -f "$d/timezone" ]; then cat "$d/timezone"; exit 0; fi
+echo "Failed to query server: timedated not available" >&2
+exit 1

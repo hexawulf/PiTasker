@@ -110,7 +110,7 @@ npm run test:e2e            # Playwright; needs PITASKER_TEST_PG_URL; serves dis
 ```
 
 Tests never touch the real crontab or database: a fake `crontab`
-(`tests/fake-crontab.sh`) is first on PATH with `FAKE_CRONTAB_FILE`, and the
+(`tests/fakes/crontab`) is first on PATH with `FAKE_CRONTAB_FILE`, and the
 crontab code refuses to run under vitest/E2E without it; `server/db.ts`
 refuses any database but `pitasker_test_*` / `pitasker_e2e*` in a test run.
 

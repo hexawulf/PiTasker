@@ -1,0 +1,2 @@
+DB_PASSWORD=hunter2
+*/30 * * * * zk @HOME@/bin/status-poll2

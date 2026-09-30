@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 // Unit tests never reach the real crontab or the real database:
-//  - tests/setup/env.ts puts tests/fake-crontab.sh first on PATH (as `crontab`)
+//  - tests/setup/env.ts puts tests/fakes/crontab first on PATH (as `crontab`)
 //    with a per-worker FAKE_CRONTAB_FILE and a scratch PITASKER_STATE_DIR;
 //  - tests/setup/global-db.ts creates a scratch database (pitasker_test_*)
 //    from PITASKER_TEST_PG_URL, migrates it, and server/db.ts refuses any

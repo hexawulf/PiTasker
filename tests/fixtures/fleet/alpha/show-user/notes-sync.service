@@ -1,0 +1,5 @@
+Id=notes-sync.service
+User=
+ExecStart={ path=@HOME@/bin/notes-sync ; argv[]=@HOME@/bin/notes-sync --quiet --token=abcdef123456 ; ignore_errors=no ; start_time=[Thu 2026-10-01 09:55:00 CST] ; stop_time=[Thu 2026-10-01 09:55:03 CST] ; pid=999 ; code=exited ; status=2 }
+Result=exit-code
+ExecMainStatus=2

@@ -1,0 +1,4 @@
+# zk crontab — gamma (fixture, systemd 255, Asia/Singapore)
+0 8 * * 1-5 @HOME@/bin/status-poll >> @HOME@/logs/status-poll.log 2>&1
+TZ=Asia/Taipei
+0 8 * * * @HOME@/bin/taipei-morning

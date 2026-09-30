@@ -1,0 +1,6 @@
+# zk crontab — beta (fixture, systemd 255, Europe/Berlin: DST ends 2026-10-25)
+PATH=@HOME@/bin:/usr/bin:/bin
+*/5  *  * * *   ~/bin/status-poll   >>   ~/logs/status-poll.log 2>&1
+*/10 * * * * @HOME@/bin/old-sync
+30 2 * * * @HOME@/bin/nightly
+0 6 * * * curl -fsS -m 10 https://hc-ping.com/abc -H 'Authorization: Bearer hcpingtoken123'

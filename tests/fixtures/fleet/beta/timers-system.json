@@ -1,0 +1,1 @@
+[{"next":1790812800000000,"left":1790812800000000,"last":1790726400000000,"passed":1790726400000000,"unit":"logrotate.timer","activates":"logrotate.service"},{"next":0,"left":0,"last":0,"passed":0,"unit":"certbot.timer","activates":"certbot.service"}]

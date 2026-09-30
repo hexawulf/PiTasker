@@ -1,0 +1,3 @@
+Id=certbot.timer
+TimersCalendar={ OnCalendar=*-*-* 00,12:00:00 ; next_elapse=n/a }
+TimersMonotonic=
