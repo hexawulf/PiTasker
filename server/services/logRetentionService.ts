@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 export const getLogDir = () => process.env.LOG_DIR || '/home/zk/logs/pitasker';
@@ -33,12 +32,13 @@ export class LogRetentionService {
     const match = filename.match(LOG_PATTERN);
     if (!match) return true; // Keep files that don't match date pattern (e.g., active log)
 
-    const dateStr = match[2];
-    const logDate = DateTime.fromISO(dateStr);
-    if (!logDate.isValid) return true;
+    const [y, m, d] = match[2].split('-').map(Number);
+    const logDate = new Date(y, m - 1, d);
+    if (Number.isNaN(logDate.getTime()) || logDate.getMonth() !== m - 1) return true;
 
-    // Last 7 days including today (7 calendar days back)
-    const cutoff = DateTime.now().startOf('day').minus({ days: this.retentionDays - 1 });
+    // The last N calendar days including today (local time).
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (this.retentionDays - 1));
     return logDate >= cutoff;
   }
 

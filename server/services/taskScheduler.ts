@@ -1,69 +1,89 @@
-import { schedule, ScheduledTask } from "node-cron";
-import { Task } from "@shared/schema";
-import { TaskRunner } from "./taskRunner";
-import { validateCron } from "../utils/validateCron";
+// PiTasker's own scheduler (node-cron). A task has exactly one runner:
+//
+//   isSystemManaged = true   the user's crontab runs it   → never scheduled here
+//   isSystemManaged = false  PiTasker runs it             → scheduled here, in the host's time zone
+//
+// sync(task) is the only way in: every route that creates, edits, moves or
+// deletes a task calls it (or unschedule), so the in-memory schedule always
+// follows the database. At fire time the task is re-read and the rule checked
+// again, so a task moved to the crontab a moment ago cannot run twice.
+import { schedule, type ScheduledTask } from "node-cron";
+import { toFiveFields } from "@shared/cron";
+import type { Task } from "@shared/schema";
+import { config } from "../config";
+import { storage } from "../storage";
+import { taskRunner, TaskRunner } from "./taskRunner";
+
+export function runsInPiTasker(task: Pick<Task, "isSystemManaged" | "cronSchedule">): boolean {
+  return task.isSystemManaged === false && toFiveFields(task.cronSchedule) !== null;
+}
+
+type Entry = { job: ScheduledTask; expr: string; tz: string };
 
 export class TaskScheduler {
-  private scheduledTasks: Map<number, ScheduledTask> = new Map();
-  private taskRunner: TaskRunner;
+  private entries = new Map<number, Entry>();
 
-  constructor() {
-    this.taskRunner = new TaskRunner();
+  constructor(
+    private runner: TaskRunner = taskRunner,
+    private load: (id: number) => Promise<Task | undefined> = (id) => storage.getTask(id),
+  ) {}
+
+  /** Make the schedule match the task: scheduled iff PiTasker is its runner. */
+  sync(task: Task): void {
+    if (!runsInPiTasker(task)) {
+      this.unschedule(task.id);
+      return;
+    }
+    const expr = toFiveFields(task.cronSchedule)!;
+    const tz = config.timeZone;
+    const cur = this.entries.get(task.id);
+    if (cur && cur.expr === expr && cur.tz === tz) return;
+    this.unschedule(task.id);
+    const job = schedule(expr, () => void this.fire(task.id), { timezone: tz, name: `task-${task.id}`, noOverlap: true });
+    this.entries.set(task.id, { job, expr, tz });
   }
 
-  scheduleTask(task: Task): void {
-    // The system crontab runs system-managed tasks; scheduling them here as
-    // well ran every job twice (and in UTC, 8 h off for daily jobs).
-    if (task.isSystemManaged) {
-      this.unscheduleTask(task.id);
+  async fire(id: number): Promise<void> {
+    const task = await this.load(id).catch(() => undefined);
+    if (!task || !runsInPiTasker(task)) {
+      this.unschedule(id);
+      return;
+    }
+    if (this.runner.isRunning(id)) {
+      console.warn(`[scheduler] task ${id} still running; skipped this start`);
       return;
     }
     try {
-      // Validate cron expression
-      if (!validateCron(task.cronSchedule)) {
-        console.error(`Invalid cron schedule for task ${task.id}: ${task.cronSchedule}`);
-        return;
-      }
-
-      // Unschedule existing task if it exists
-      this.unscheduleTask(task.id);
-
-      // Schedule new task
-      const scheduledTask = schedule(task.cronSchedule, () => {
-        console.log(`Running scheduled task: ${task.name} (ID: ${task.id})`);
-        this.taskRunner.runTask(task);
-      }, {
-        timezone: "UTC"
-      });
-
-      this.scheduledTasks.set(task.id, scheduledTask);
-      console.log(`Scheduled task: ${task.name} (ID: ${task.id}) with schedule: ${task.cronSchedule}`);
-    } catch (error) {
-      console.error(`Error scheduling task ${task.id}:`, error);
+      await this.runner.start(task, "schedule");
+    } catch (e) {
+      console.error(`[scheduler] task ${id} did not start:`, e);
     }
   }
 
-  unscheduleTask(taskId: number): void {
-    const scheduledTask = this.scheduledTasks.get(taskId);
-    if (scheduledTask) {
-      scheduledTask.stop();
-      scheduledTask.destroy();
-      this.scheduledTasks.delete(taskId);
-      console.log(`Unscheduled task ID: ${taskId}`);
-    }
+  unschedule(id: number): void {
+    const cur = this.entries.get(id);
+    if (!cur) return;
+    cur.job.stop();
+    cur.job.destroy();
+    this.entries.delete(id);
   }
 
-  getScheduledTasksCount(): number {
-    return this.scheduledTasks.size;
+  syncAll(tasks: Task[]): void {
+    const ids = new Set(tasks.map((t) => t.id));
+    for (const id of [...this.entries.keys()]) if (!ids.has(id)) this.unschedule(id);
+    for (const t of tasks) this.sync(t);
   }
 
-  stopAllTasks(): void {
-    for (const [taskId, scheduledTask] of this.scheduledTasks) {
-      scheduledTask.stop();
-      scheduledTask.destroy();
-    }
-    this.scheduledTasks.clear();
-    console.log("Stopped all scheduled tasks");
+  isScheduled(id: number): boolean {
+    return this.entries.has(id);
+  }
+
+  scheduledIds(): number[] {
+    return [...this.entries.keys()].sort((a, b) => a - b);
+  }
+
+  stopAll(): void {
+    for (const id of [...this.entries.keys()]) this.unschedule(id);
   }
 }
 

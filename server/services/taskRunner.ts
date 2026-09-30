@@ -1,83 +1,88 @@
-import { exec } from "child_process";
-import { DateTime } from "luxon";
-import { Task } from "@shared/schema";
+// Runs a task once (scheduled by PiTasker or "Run now") and records the run.
+//   task_runs row (running) ─► execCommand ─► row finished (exit code, duration, stdout, stderr)
+//                                           └► tasks.status / last_run / output (latest summary)
+import type { Task, TaskRun } from "@shared/schema";
+import { config } from "../config";
 import { storage } from "../storage";
+import { execCommand, type ExecResult } from "./exec";
 import { NotificationService } from "./notificationService";
 
-export class TaskRunner {
-  private runningTasks: Set<number> = new Set();
-  private notificationService: NotificationService;
-
+export class AlreadyRunningError extends Error {
+  status = 409;
   constructor() {
-    this.notificationService = new NotificationService();
-  }
-
-  async runTask(task: Task): Promise<void> {
-    if (this.runningTasks.has(task.id)) {
-      console.log(`Task ${task.id} is already running`);
-      return;
-    }
-
-    this.runningTasks.add(task.id);
-
-    try {
-      // Update task status to running with UTC timestamp
-      const startTime = DateTime.utc().toJSDate();
-      await storage.updateTask(task.id, {
-        status: "running",
-        lastRun: startTime,
-      });
-
-      console.log(`Executing task ${task.id}: ${task.command}`);
-
-      // Execute the command
-      exec(task.command, { timeout: 300000 }, async (error, stdout, stderr) => {
-        this.runningTasks.delete(task.id);
-
-        const output = stdout || stderr || "";
-        const isSuccess = !error;
-        const status = isSuccess ? "success" : "failed";
-
-        try {
-          // Update task with results
-          await storage.updateTask(task.id, {
-            status,
-            output: output.slice(0, 10000), // Limit output size
-          });
-
-          // Send notification
-          await this.notificationService.sendTaskNotification(task, status, output);
-
-          console.log(`Task ${task.id} completed with status: ${status}`);
-        } catch (updateError) {
-          console.error(`Error updating task ${task.id} after execution:`, updateError);
-        }
-      });
-    } catch (error) {
-      this.runningTasks.delete(task.id);
-      console.error(`Error starting task ${task.id}:`, error);
-
-      // Update task status to failed
-      try {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        await storage.updateTask(task.id, {
-          status: "failed",
-          output: `Error starting task: ${errorMessage}`,
-        });
-
-        // Send failure notification
-        await this.notificationService.sendTaskNotification(task, "failed", errorMessage);
-      } catch (updateError) {
-        console.error(`Error updating task ${task.id} after start failure:`, updateError);
-      }
-    }
-  }
-
-  isTaskRunning(taskId: number): boolean {
-    return this.runningTasks.has(taskId);
-  }
-
-  getRunningTasksCount(): number {
-    return this.runningTasks.size;
+    super("Task is already running");
   }
 }
+
+/** Short text for tasks.output: both streams, labelled, capped. */
+export function summarizeOutput(r: Pick<ExecResult, "stdout" | "stderr" | "status" | "exitCode" | "signal">, cap = 10_000): string {
+  const parts: string[] = [];
+  if (r.stdout) parts.push(r.stdout.trimEnd());
+  if (r.stderr) parts.push(`[stderr]\n${r.stderr.trimEnd()}`);
+  if (r.status === "timeout") parts.push("[timed out: process group killed]");
+  else if (r.exitCode !== 0) parts.push(`[exit ${r.exitCode ?? "?"}${r.signal ? `, ${r.signal}` : ""}]`);
+  const s = parts.join("\n");
+  return s.length > cap ? s.slice(s.length - cap) : s;
+}
+
+export class TaskRunner {
+  private running = new Set<number>();
+  private notifications = new NotificationService();
+
+  isRunning(taskId: number): boolean {
+    return this.running.has(taskId);
+  }
+
+  runningCount(): number {
+    return this.running.size;
+  }
+
+  /**
+   * Start a run. Resolves with the run row as soon as it is recorded;
+   * `finished` resolves when the command is done.
+   */
+  async start(task: Task, trigger: "schedule" | "manual"): Promise<{ run: TaskRun; finished: Promise<TaskRun | undefined> }> {
+    if (this.running.has(task.id)) throw new AlreadyRunningError();
+    this.running.add(task.id);
+    let run: TaskRun;
+    try {
+      run = await storage.createRun(task.id, trigger);
+      await storage.updateTask(task.id, { status: "running", lastRun: run.startedAt });
+    } catch (e) {
+      this.running.delete(task.id);
+      throw e;
+    }
+    const finished = this.execute(task, run);
+    return { run, finished };
+  }
+
+  private async execute(task: Task, run: TaskRun): Promise<TaskRun | undefined> {
+    try {
+      const r = await execCommand(task.command, { timeoutMs: config.runTimeoutMs, cap: config.outputCap });
+      const row = await storage.finishRun(run.id, {
+        status: r.status,
+        finishedAt: new Date(),
+        durationMs: r.durationMs,
+        exitCode: r.exitCode,
+        signal: r.signal,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        truncated: r.truncated,
+      });
+      const status = r.status === "success" ? "success" : "failed";
+      await storage.updateTask(task.id, { status, output: summarizeOutput(r) });
+      await storage.pruneRuns(task.id);
+      await this.notifications.sendTaskNotification(task, status, summarizeOutput(r, 200));
+      return row;
+    } catch (e) {
+      console.error(`[runner] task ${task.id} run ${run.id} could not be recorded:`, e);
+      await storage.finishRun(run.id, { status: "failed", finishedAt: new Date(), stderr: String(e) }).catch(() => undefined);
+      await storage.updateTask(task.id, { status: "failed" }).catch(() => undefined);
+      return undefined;
+    } finally {
+      this.running.delete(task.id);
+    }
+  }
+}
+
+export const taskRunner = new TaskRunner();

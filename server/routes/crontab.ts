@@ -1,184 +1,141 @@
-import express from "express";
+// The crontab itself: view (every line, as written), import/export, validate,
+// backups and restore. Writes take ?dryRun=1 / ?expectedHash= like the task routes.
+import express, { type NextFunction, type Request, type Response } from "express";
+import { describeCron } from "@shared/cron";
+import { listJobs } from "../crontab/document";
+import { listBackups, mutateCrontab, readBackup, readCrontab, type MutateOptions } from "../crontab/store";
+import { cronStates, doubleRuns, exportToCrontab, importFromCrontab, jobForTask } from "../crontab/sync";
 import { isAuthenticated } from "../middleware/authMiddleware";
-import { crontabService } from "../services/crontabService";
-import { crontabSyncService } from "../services/crontabSyncService";
 import { storage } from "../storage";
+import { invalidateCrontabCache } from "./tasks";
 
 const router = express.Router();
+router.use(isAuthenticated);
 
-// Import crontab entries to database
-router.post("/import", isAuthenticated, async (req, res) => {
-  try {
-    const { commands } = req.body || {};
-    const result = await crontabSyncService.importFromCrontab({ commands });
-    res.json(result);
-  } catch (error: any) {
-    console.error("Crontab import error:", error);
-    res.status(500).json({ 
-      message: "Failed to import from crontab",
-      error: error.message 
-    });
-  }
-});
+const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
+  fn(req, res).catch((e: Error & { status?: number }) => {
+    if (e.status && e.status >= 400 && e.status < 600) return res.status(e.status).json({ message: e.message });
+    console.error(`[crontab] ${req.method} ${req.path}:`, e);
+    res.status(500).json({ message: e.message });
+  });
 
-// Export database tasks to crontab
-router.post("/export", isAuthenticated, async (req, res) => {
-  try {
-    const { taskIds } = req.body;
-    const result = await crontabSyncService.exportToCrontab(taskIds);
-    res.json(result);
-  } catch (error: any) {
-    console.error("Crontab export error:", error);
-    res.status(500).json({ 
-      message: "Failed to export to crontab",
-      error: error.message 
-    });
-  }
-});
+function writeOpts(req: Request): MutateOptions {
+  const dry = req.query.dryRun ?? req.body?.dryRun;
+  const hash = req.query.expectedHash ?? req.body?.expectedHash;
+  return { dryRun: dry === "1" || dry === "true" || dry === true, expectedHash: typeof hash === "string" && hash ? hash : undefined };
+}
 
-// Full bidirectional sync
-router.post("/sync", isAuthenticated, async (req, res) => {
-  try {
-    const result = await crontabSyncService.fullSync();
-    res.json(result);
-  } catch (error: any) {
-    console.error("Crontab sync error:", error);
-    res.status(500).json({ 
-      message: "Failed to sync crontab",
-      error: error.message 
-    });
-  }
-});
-
-// Get sync status
-router.get("/status", isAuthenticated, async (req, res) => {
-  try {
+/** Every line with its kind; job lines carry their id, description and linked task. */
+router.get(
+  "/",
+  wrap(async (_req, res) => {
+    const { text, hash, doc } = await readCrontab();
     const tasks = await storage.getAllTasks();
-    const crontabEntries = await crontabService.readUserCrontab();
-    
-    const syncedTasks = tasks.filter((t) => t.syncedToCrontab && t.isSystemManaged);
-    const unsyncedTasks = tasks.filter((t) => !t.syncedToCrontab && t.isSystemManaged);
-    const databaseOnlyTasks = tasks.filter((t) => !t.isSystemManaged);
-    
-    // Find most recent sync time
-    const lastSync = syncedTasks.reduce((latest, task) => {
-      if (!task.crontabSyncedAt) return latest;
-      return !latest || task.crontabSyncedAt > latest ? task.crontabSyncedAt : latest;
-    }, null as Date | null);
-
+    const jobs = new Map(listJobs(doc).map((j) => [j.index, j]));
+    const taskFor = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.isSystemManaged === false) continue;
+      const j = jobForTask(doc, t);
+      if (j) taskFor.set(j.id, t.id);
+    }
     res.json({
-      lastSync: lastSync?.toISOString() || null,
-      dbTaskCount: tasks.length,
-      crontabEntryCount: crontabEntries.length,
-      systemManagedCount: syncedTasks.length + unsyncedTasks.length,
-      syncedCount: syncedTasks.length,
-      unsyncedCount: unsyncedTasks.length,
-      databaseOnlyCount: databaseOnlyTasks.length,
-      managedCrontabEntries: crontabEntries.filter((e) => e.isManaged).length,
-      unmanagedCrontabEntries: crontabEntries.filter((e) => !e.isManaged).length,
+      text,
+      hash,
+      lines: doc.lines.map((l, i) => {
+        const j = jobs.get(i);
+        return {
+          n: i + 1,
+          kind: l.kind,
+          raw: l.raw,
+          ...(j
+            ? { id: j.id, managed: j.managed, schedule: j.schedule, command: j.command, description: describeCron(j.schedule), taskId: taskFor.get(j.id) ?? null }
+            : {}),
+          ...(l.kind === "env" ? { envName: l.envName } : {}),
+        };
+      }),
+      doubleRuns: doubleRuns(doc, tasks),
     });
-  } catch (error: any) {
-    console.error("Crontab status error:", error);
-    res.status(500).json({ 
-      message: "Failed to get crontab status",
-      error: error.message 
-    });
-  }
-});
+  }),
+);
 
-// Validate sync integrity
-router.get("/validate", isAuthenticated, async (req, res) => {
-  try {
-    const result = await crontabSyncService.validateSync();
-    res.json(result);
-  } catch (error: any) {
-    console.error("Crontab validation error:", error);
-    res.status(500).json({ 
-      message: "Failed to validate crontab sync",
-      error: error.message 
-    });
-  }
-});
+router.post(
+  "/import",
+  wrap(async (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((x: unknown) => typeof x === "string") : undefined;
+    invalidateCrontabCache();
+    const r = await importFromCrontab({ ids, dryRun: writeOpts(req).dryRun });
+    res.json(r);
+  }),
+);
 
-// Get raw crontab
-router.get("/raw", isAuthenticated, async (req, res) => {
-  try {
-    const entries = await crontabService.readUserCrontab();
-    
-    // Format as raw crontab content
-    const content = entries
-      .map((entry) => `${entry.schedule} ${entry.command}${entry.comment ? ` # ${entry.comment}` : ""}`)
-      .join("\n");
-    
-    res.json({ content });
-  } catch (error: any) {
-    console.error("Crontab read error:", error);
-    res.status(500).json({ 
-      message: "Failed to read crontab",
-      error: error.message 
-    });
-  }
-});
+router.post(
+  "/export",
+  wrap(async (req, res) => {
+    const opts = writeOpts(req);
+    const taskIds = Array.isArray(req.body?.taskIds) ? req.body.taskIds.map(Number).filter(Number.isInteger) : undefined;
+    const r = await exportToCrontab({ ...opts, taskIds });
+    invalidateCrontabCache();
+    res.json({ dryRun: Boolean(opts.dryRun), changed: r.changed, written: r.written, before: r.before, after: r.after, hash: r.beforeHash, exported: r.exported, unchanged: r.unchanged, skipped: r.skipped, backup: r.backup });
+  }),
+);
 
-// Manual crontab edit (advanced - use with caution)
-router.put("/raw", isAuthenticated, async (req, res) => {
-  try {
-    const { content } = req.body;
-    
-    if (!content || typeof content !== "string") {
-      return res.status(400).json({ message: "Invalid crontab content" });
+router.get(
+  "/validate",
+  wrap(async (_req, res) => {
+    const { doc } = await readCrontab();
+    const tasks = await storage.getAllTasks();
+    const states = cronStates(doc, tasks);
+    const discrepancies: { type: string; taskId?: number; details: string }[] = [];
+    for (const t of tasks) {
+      const s = states.get(t.id);
+      if (s === "missing") discrepancies.push({ type: "missing_in_crontab", taskId: t.id, details: `"${t.name}" runs from the crontab but has no line there` });
+      if (s === "disabled") discrepancies.push({ type: "disabled_in_crontab", taskId: t.id, details: `"${t.name}" is commented out in the crontab` });
+      if (s === "active") {
+        const j = jobForTask(doc, t)!;
+        if (j.schedule !== t.cronSchedule) discrepancies.push({ type: "schedule_mismatch", taskId: t.id, details: `DB has "${t.cronSchedule}", crontab has "${j.schedule}"` });
+        if (j.command.trim() !== t.command.trim()) discrepancies.push({ type: "command_mismatch", taskId: t.id, details: `DB has "${t.command}", crontab has "${j.command}"` });
+      }
     }
+    for (const d of doubleRuns(doc, tasks)) discrepancies.push({ type: "runs_twice", taskId: d.taskId, details: `PiTasker and the crontab both run this command: ${d.line}` });
+    res.json({ isValid: discrepancies.length === 0, discrepancies });
+  }),
+);
 
-    // Parse and validate the content
-    const lines = content.split("\n").filter((line) => line.trim() !== "");
-    
-    // This is dangerous - we're allowing raw crontab editing
-    // In a production environment, you might want to add more validation
-    
-    res.status(501).json({ 
-      message: "Raw crontab editing not implemented for safety reasons",
-      suggestion: "Use import/export endpoints instead"
-    });
-  } catch (error: any) {
-    console.error("Crontab write error:", error);
-    res.status(500).json({ 
-      message: "Failed to write crontab",
-      error: error.message 
-    });
-  }
-});
+router.get(
+  "/backups",
+  wrap(async (_req, res) => {
+    res.json(listBackups());
+  }),
+);
 
-// Remove task from crontab only (keep in database)
-router.delete("/:taskId", isAuthenticated, async (req, res) => {
-  try {
-    const taskId = parseInt(req.params.taskId);
-    if (isNaN(taskId)) {
-      return res.status(400).json({ message: "Invalid task ID" });
+router.get(
+  "/backups/:name",
+  wrap(async (req, res) => {
+    res.json({ name: req.params.name, text: readBackup(req.params.name) });
+  }),
+);
+
+router.post(
+  "/backups/:name/restore",
+  wrap(async (req, res) => {
+    const text = readBackup(req.params.name);
+    const opts = writeOpts(req);
+    const r = await mutateCrontab(() => text, opts);
+    invalidateCrontabCache();
+    res.json({ dryRun: Boolean(opts.dryRun), changed: r.changed, written: r.written, before: r.before, after: r.after, hash: r.beforeHash, backup: r.backup });
+  }),
+);
+
+router.get(
+  "/check-access",
+  wrap(async (_req, res) => {
+    try {
+      await readCrontab();
+      res.json({ hasAccess: true });
+    } catch (e) {
+      res.json({ hasAccess: false, error: (e as Error).message });
     }
-
-    await crontabSyncService.removeFromCrontab(taskId);
-    res.json({ message: "Task removed from crontab successfully" });
-  } catch (error: any) {
-    console.error("Crontab remove error:", error);
-    res.status(500).json({ 
-      message: "Failed to remove from crontab",
-      error: error.message 
-    });
-  }
-});
-
-// Check crontab access
-router.get("/check-access", isAuthenticated, async (req, res) => {
-  try {
-    const hasAccess = await crontabService.hasCrontabAccess();
-    res.json({ hasAccess });
-  } catch (error: any) {
-    console.error("Crontab access check error:", error);
-    res.status(500).json({ 
-      message: "Failed to check crontab access",
-      error: error.message 
-    });
-  }
-});
+  }),
+);
 
 export default router;
