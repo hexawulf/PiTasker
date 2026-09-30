@@ -17,7 +17,7 @@ import QuickActions from "@/components/QuickActions";
 import ImportCronModal from "@/components/ImportCronModal";
 import SystemMonitor from "@/components/SystemMonitor";
 import AboutModal from "@/components/AboutModal";
-import { requestNotificationPermission, setupNotificationListener, showTaskNotification } from "@/lib/firebase";
+import { requestNotificationPermission, showTaskNotification } from "@/lib/notify";
 import { useToast } from "@/hooks/use-toast";
 import { useTasks } from "@/hooks/useTasks";
 import LogsWidget from '@/components/LogsWidget';
@@ -49,18 +49,7 @@ export default function Dashboard() {
     // Request notification permission on component mount
     requestNotificationPermission();
 
-    // Setup notification listener
-    setupNotificationListener((payload) => {
-      const { title, body } = payload.notification || {};
-      if (title && body) {
-        showTaskNotification(title, 'success');
-        toast({
-          title,
-          description: body,
-        });
-      }
-    });
-  }, [toast]);
+  }, []);
 
   // Monitor task status changes for notifications
   useEffect(() => {
