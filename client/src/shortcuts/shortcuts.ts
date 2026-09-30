@@ -6,11 +6,11 @@
  *            ├─ typing (input/textarea/select) ──► ignore
  *            ├─ "?" ─────────────────────────────► help sheet
  *            ├─ Shift+letter ────────────────────► ignore
- *            ├─ pending "g" + t/c/l/s ──────────► go to tab
+ *            ├─ pending "g" + t/c/f/l/s ────────► go to tab
  *            └─ single key n / r t, or "g" (starts a 1.5 s sequence)
  * Nothing destructive is a shortcut.
  */
-export type ShortcutId = "help" | "theme" | "refresh" | "new-task" | "search" | "go-tasks" | "go-crontab" | "go-logs" | "go-settings";
+export type ShortcutId = "help" | "theme" | "refresh" | "new-task" | "search" | "go-tasks" | "go-crontab" | "go-fleet" | "go-logs" | "go-settings";
 
 export type Shortcut = { id: ShortcutId; keys: string[]; label: string; group: "General" | "Go to" | "Tasks" };
 
@@ -20,10 +20,11 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: "refresh", keys: ["r"], label: "Refresh now", group: "General" },
   { id: "go-tasks", keys: ["g", "t"], label: "Go to Tasks", group: "Go to" },
   { id: "go-crontab", keys: ["g", "c"], label: "Go to Crontab", group: "Go to" },
+  { id: "go-fleet", keys: ["g", "f"], label: "Go to Fleet", group: "Go to" },
   { id: "go-logs", keys: ["g", "l"], label: "Go to Logs", group: "Go to" },
   { id: "go-settings", keys: ["g", "s"], label: "Go to Settings", group: "Go to" },
   { id: "new-task", keys: ["n"], label: "New task", group: "Tasks" },
-  { id: "search", keys: ["/"], label: "Search tasks", group: "Tasks" },
+  { id: "search", keys: ["/"], label: "Search (Tasks, Fleet)", group: "Tasks" },
 ];
 
 export const SEQUENCE_TIMEOUT_MS = 1500;

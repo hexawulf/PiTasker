@@ -1,7 +1,7 @@
 import { useEffect, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
-import { FileText, Keyboard, ListChecks, ListTodo, LogOut, RefreshCw, SettingsIcon, TerminalSquare } from "lucide-react";
+import { FileText, Globe, Keyboard, ListChecks, ListTodo, LogOut, RefreshCw, SettingsIcon, TerminalSquare } from "lucide-react";
 import AboutModal from "@/components/about-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,14 @@ import { useOpenShortcutHelp } from "@/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
 import TasksPage from "@/pages/tasks";
 import CrontabPage from "@/pages/crontab";
+import FleetPage from "@/pages/fleet";
 import LogsPage from "@/pages/logs";
 import SettingsPage from "@/pages/settings";
 
 export const TABS: { id: string; label: string; icon: ComponentType<{ className?: string }>; component: ComponentType }[] = [
   { id: "tasks", label: "Tasks", icon: ListChecks, component: TasksPage },
   { id: "crontab", label: "Crontab", icon: TerminalSquare, component: CrontabPage },
+  { id: "fleet", label: "Fleet", icon: Globe, component: FleetPage },
   { id: "logs", label: "Logs", icon: FileText, component: LogsPage },
   { id: "settings", label: "Settings", icon: SettingsIcon, component: SettingsPage },
 ];

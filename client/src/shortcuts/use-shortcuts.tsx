@@ -8,7 +8,7 @@ import { isDialogOpen, isTypingTarget, resolveKey, SEQUENCE_TIMEOUT_MS, SHORTCUT
 type Handlers = Map<ShortcutId, Set<() => void>>;
 const Ctx = createContext<{ handlers: Handlers; openHelp: () => void } | null>(null);
 
-const TABS: Partial<Record<ShortcutId, string>> = { "go-tasks": "/tasks", "go-crontab": "/crontab", "go-logs": "/logs", "go-settings": "/settings" };
+const TABS: Partial<Record<ShortcutId, string>> = { "go-tasks": "/tasks", "go-crontab": "/crontab", "go-fleet": "/fleet", "go-logs": "/logs", "go-settings": "/settings" };
 
 /** Global keys (see shortcuts.ts); pages add their own actions with useShortcutAction. */
 export function ShortcutsProvider({ children }: { children: ReactNode }) {
