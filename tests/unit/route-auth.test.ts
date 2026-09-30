@@ -52,7 +52,7 @@ afterAll(() => server?.close());
 describe("every /api route requires a login", () => {
   it("finds the routes", () => {
     expect(routes.length).toBeGreaterThan(25);
-    for (const r of ["GET /api/tasks", "POST /api/tasks/:id/runner", "GET /api/crontab/", "POST /api/crontab/backups/:name/restore", "GET /api/pitasker-logs/:filename"]) {
+    for (const r of ["GET /api/tasks", "POST /api/tasks/:id/runner", "GET /api/crontab/", "POST /api/crontab/backups/:name/restore", "GET /api/pitasker-logs/file"]) {
       expect(routes).toContain(r);
     }
   });
@@ -95,6 +95,10 @@ describe("request guards", () => {
     expect(res.status).toBe(403);
   });
 
+  it("no /api path ends in .log (nginx answers 403 to those)", () => {
+    expect(routes.filter((r) => /\.log$|:filename/.test(r))).toEqual([]);
+  });
+
   it("health is public and says little", async () => {
     const res = await fetch(`${base}/health`);
     expect(res.status).toBe(200);
@@ -106,5 +110,16 @@ describe("request guards", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
     expect(res.headers.get("x-powered-by")).toBeNull();
+  });
+});
+
+describe("originAllowed", () => {
+  it("accepts the Host, X-Forwarded-Host or the configured public origin", async () => {
+    const { originAllowed } = await import("../../server/middleware/sameOrigin");
+    expect(originAllowed("https://pitasker.piapps.dev", { headers: { host: "127.0.0.1:5007" } })).toBe(true); // nginx without Host
+    expect(originAllowed("https://a.example", { headers: { host: "127.0.0.1:5007", "x-forwarded-host": "a.example" } })).toBe(true);
+    expect(originAllowed("http://localhost:5027", { headers: { host: "localhost:5027" } })).toBe(true);
+    expect(originAllowed("https://evil.example", { headers: { host: "127.0.0.1:5007" } })).toBe(false);
+    expect(originAllowed("null", { headers: { host: "x" } })).toBe(false);
   });
 });

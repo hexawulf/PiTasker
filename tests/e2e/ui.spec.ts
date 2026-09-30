@@ -2,9 +2,14 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, expectNoHorizontalScroll, test } from "./helpers";
 
 test("logs widget lists PiTasker's log files and shows the tail", async ({ page }) => {
+  const dotLog: string[] = []; // nginx answers 403 to URL paths ending in .log
+  page.on("request", (r) => {
+    if (new URL(r.url()).pathname.endsWith(".log")) dotLog.push(r.url());
+  });
   await page.goto("/logs");
   await expect(page.getByTestId("log-select")).toHaveValue(/pitasker-\d{4}-\d{2}-\d{2}\.log/);
   await expect(page.getByTestId("log-content")).toContainText("PiTasker started");
+  expect(dotLog).toEqual([]);
 });
 
 test("theme toggle switches and persists", async ({ page }) => {

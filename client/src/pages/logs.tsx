@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 /** PiTasker's own log files (LOG_DIR, within LOG_RETENTION_DAYS): the last 100 lines of one. */
 export default function LogsPage() {
@@ -10,7 +11,13 @@ export default function LogsPage() {
   useEffect(() => {
     if (!file && files.data?.length) setFile([...files.data].sort().reverse()[0]);
   }, [files.data, file]);
-  const content = useQuery<{ content: string }>({ queryKey: ["/api/pitasker-logs", file], enabled: Boolean(file), refetchInterval: 15_000 });
+  // ?name=: nginx refuses URL paths ending in .log.
+  const content = useQuery<{ content: string }>({
+    queryKey: ["/api/pitasker-logs/file", file],
+    queryFn: () => api("GET", `/api/pitasker-logs/file?name=${encodeURIComponent(file)}`),
+    enabled: Boolean(file),
+    refetchInterval: 15_000,
+  });
 
   return (
     <section aria-labelledby="logs-heading" className="space-y-4">
@@ -37,7 +44,7 @@ export default function LogsPage() {
           </Button>
           {file && (
             <Button variant="outline" className="border-pi-border bg-transparent text-pi-text hover:bg-pi-card-hover" asChild>
-              <a href={`/api/pitasker-logs/${encodeURIComponent(file)}?download=1`} aria-label={`Download ${file}`}>
+              <a href={`/api/pitasker-logs/file?name=${encodeURIComponent(file)}&download=1`} aria-label={`Download ${file}`}>
                 <Download /> Download
               </a>
             </Button>
