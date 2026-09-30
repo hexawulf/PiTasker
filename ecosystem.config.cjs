@@ -10,7 +10,7 @@ module.exports = {
       interpreter: "node",
       exec_mode: "fork",
       watch: false,
-      max_memory_restart: "256M",
+      max_memory_restart: "384M",
       // A start that fails (e.g. pending migrations) stops after 10 tries instead of looping.
       min_uptime: "10s",
       max_restarts: 10,
