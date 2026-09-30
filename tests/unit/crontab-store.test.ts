@@ -140,6 +140,12 @@ describe("backups", () => {
     expect(readBackup(list[0].name)).toBe(`v${BACKUP_KEEP + 4}\n`);
   });
 
+  it("orders backups made in the same millisecond correctly", () => {
+    fs.mkdirSync(backupDir(), { recursive: true });
+    for (const [n, t] of [["crontab-20260930T010203004Z.txt", "a"], ["crontab-20260930T010203004Z-1.txt", "b"], ["crontab-20260930T010203004Z-2.txt", "c"]]) fs.writeFileSync(path.join(backupDir(), n), t);
+    expect(listBackups().map((b) => readBackup(b.name))).toEqual(["c", "b", "a"]);
+  });
+
   it("rejects path tricks in backup names", () => {
     expect(() => readBackup("../../etc/passwd")).toThrow(/Invalid/);
   });

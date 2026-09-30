@@ -104,11 +104,15 @@ export type BackupInfo = { name: string; size: number; createdAt: string };
 export function listBackups(): BackupInfo[] {
   const dir = backupDir();
   if (!fs.existsSync(dir)) return [];
+  // Newest first: by timestamp, then by the -N suffix two writes in one millisecond get.
+  const key = (n: string) => {
+    const m = /^crontab-(\d{8}T\d{9}Z)(?:-(\d+))?\.txt$/.exec(n)!;
+    return `${m[1]}-${(m[2] ?? "0").padStart(6, "0")}`;
+  };
   return fs
     .readdirSync(dir)
     .filter((n) => BACKUP_RE.test(n))
-    .sort()
-    .reverse()
+    .sort((a, b) => (key(a) < key(b) ? 1 : key(a) > key(b) ? -1 : 0))
     .map((name) => {
       const st = fs.statSync(path.join(dir, name));
       return { name, size: st.size, createdAt: st.mtime.toISOString() };

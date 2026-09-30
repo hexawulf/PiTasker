@@ -74,3 +74,16 @@ describe("summarizeOutput", () => {
     expect(summarizeOutput({ stdout: "", stderr: "", status: "timeout", exitCode: null, signal: "SIGTERM" })).toBe("[timed out: process group killed]");
   });
 });
+
+describe("crontab env lines", () => {
+  it("parses NAME=value lines, strips quotes, skips MAILTO", async () => {
+    const { crontabEnvVars } = await import("../../server/services/exec");
+    const lines = ["SHELL=/bin/bash", 'PATH="/home/zk/bin:/usr/bin:/bin"', 'MAILTO=""', "FOO = bar baz ", "# X=1"].map((raw) => ({ raw, kind: raw.startsWith("#") ? "comment" : "env" }));
+    expect(crontabEnvVars(lines)).toEqual({ SHELL: "/bin/bash", PATH: "/home/zk/bin:/usr/bin:/bin", FOO: "bar baz" });
+  });
+
+  it("runs with the crontab's SHELL and PATH", async () => {
+    const r = await execCommand('echo "$0|$PATH|$FOO"', { ...opts, crontabEnv: { SHELL: "/bin/bash", PATH: "/usr/bin:/bin", FOO: "x" } });
+    expect(r.stdout).toBe("/bin/bash|/usr/bin:/bin|x\n");
+  });
+});

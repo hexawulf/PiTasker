@@ -1,7 +1,7 @@
 // Run one command the way cron would, and capture what happened.
 //
-//   command (crontab syntax) ─► cronCommand() ─► /bin/sh -c <cmd>, stdin = text after the first unescaped %
-//                                               own process group (detached), minimal cron-like env
+//   command (crontab syntax) ─► cronCommand() ─► $SHELL -c <cmd> (default /bin/sh), stdin = text after the first unescaped %
+//                                               own process group (detached), cron-like env + the crontab's env lines
 //   stdout ─┐ each kept separately, the last `cap` bytes (truncated flag)
 //   stderr ─┘
 //   timeout ─► SIGTERM to the whole group, SIGKILL 5 s later
@@ -19,7 +19,14 @@ export type ExecResult = {
   truncated: boolean;
 };
 
-export type ExecOptions = { timeoutMs: number; cap: number; killGraceMs?: number; cwd?: string };
+export type ExecOptions = {
+  timeoutMs: number;
+  cap: number;
+  killGraceMs?: number;
+  cwd?: string;
+  /** Variables from the crontab's own env lines (SHELL, PATH, …), as cron would set them. */
+  crontabEnv?: Record<string, string>;
+};
 
 /**
  * Crontab command syntax → shell command + stdin, as cron does it:
@@ -42,6 +49,18 @@ export function cronCommand(command: string): { command: string; stdin: string |
     else stdin += c;
   }
   return { command: cmd, stdin: stdin === null ? null : `${stdin}\n` };
+}
+
+/** NAME=value lines of a crontab → variables (quotes stripped; MAILTO is cron's business). */
+export function crontabEnvVars(lines: { kind: string; raw: string }[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const l of lines) {
+    if (l.kind !== "env") continue;
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(l.raw.replace(/\r$/, ""));
+    if (!m || m[1] === "MAILTO" || m[1] === "CRON_TZ") continue;
+    out[m[1]] = m[2].replace(/^(["'])(.*)\1$/, "$2");
+  }
+  return out;
 }
 
 /** What cron gives a job: no PiTasker secrets (SESSION_SECRET, DATABASE_URL …) ever reach it. */
@@ -85,10 +104,12 @@ export function execCommand(command: string, opts: ExecOptions): Promise<ExecRes
     const err = new Tail(opts.cap);
     let timedOut = false;
     let done = false;
-    const child = spawn("/bin/sh", ["-c", cmd], {
+    const env = { ...jobEnv(), ...(opts.crontabEnv ?? {}) };
+    const shell = env.SHELL && env.SHELL.startsWith("/") ? env.SHELL : "/bin/sh";
+    const child = spawn(shell, ["-c", cmd], {
       detached: true, // own process group: a timeout kills everything the job started
-      cwd: opts.cwd ?? jobEnv().HOME,
-      env: jobEnv(),
+      cwd: opts.cwd ?? env.HOME,
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
     const killGroup = (sig: NodeJS.Signals) => {

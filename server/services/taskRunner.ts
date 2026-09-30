@@ -4,7 +4,8 @@
 import type { Task, TaskRun } from "@shared/schema";
 import { config } from "../config";
 import { storage } from "../storage";
-import { execCommand, type ExecResult } from "./exec";
+import { readCrontab } from "../crontab/store";
+import { crontabEnvVars, execCommand, type ExecResult } from "./exec";
 import { NotificationService } from "./notificationService";
 
 export class AlreadyRunningError extends Error {
@@ -58,7 +59,9 @@ export class TaskRunner {
 
   private async execute(task: Task, run: TaskRun): Promise<TaskRun | undefined> {
     try {
-      const r = await execCommand(task.command, { timeoutMs: config.runTimeoutMs, cap: config.outputCap });
+      // The crontab's SHELL=/PATH=… lines apply to PiTasker's runs too (a task may move between runners).
+      const crontabEnv = await readCrontab().then((c) => crontabEnvVars(c.doc.lines)).catch(() => ({}));
+      const r = await execCommand(task.command, { timeoutMs: config.runTimeoutMs, cap: config.outputCap, crontabEnv });
       const row = await storage.finishRun(run.id, {
         status: r.status,
         finishedAt: new Date(),
