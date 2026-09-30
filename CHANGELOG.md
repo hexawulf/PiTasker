@@ -3,7 +3,41 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [Unreleased]
+## [Unreleased] — 2.1.0 (P3: read-only fleet view), branch `feat/2.1-fleet-view`
+
+### Added
+- **Fleet tab** (`g f`): every host's zk + root crontab, /etc/crontab,
+  cron.d, run-parts and system + user timers; schedules and next runs in
+  each host's zone (CRON_TZ/TZ honoured), last run (cron journal, log
+  file, systemd), hints (same job on two hosts, script not in bin.git, bin
+  replica differs, disabled), by-host and all-jobs views, filters in the
+  URL, offline hosts from their saved snapshot. Read-only: no edit, run or
+  toggle controls.
+- **PiTasker agent** (`dist/agent.mjs`, one self-contained file): GET-only
+  `/api/agent/health` + `/api/agent/cron`, bearer token (SHA-256 on the
+  agent, timingSafeEqual, 429), refuses 0.0.0.0 or a foreign bind address,
+  redaction before anything leaves the host, 30 s cache.
+- Hub: `GET /api/fleet[?refresh=1]`, `GET /api/fleet/:host`; agents fetched
+  in parallel (5 s, 1 MB, no redirects, zod-validated); snapshots saved to
+  `PITASKER_STATE_DIR/fleet/<id>.json` (0600). No DB migration.
+- `scripts/install-agent.sh` (+ `deploy/`): agent unit with an empty
+  capability bounding set (no sudo from the agent) and no NoNewPrivileges
+  (setgid crontab -l); root crontab via a root-owned snapshot service/path/
+  timer (no sudoers rule); `--dry-run`, `--update`, `--rollback`,
+  `--uninstall`, `--root-snapshot-only`.
+- Parser: system-crontab mode (a user field), with round-trip tests.
+- Tests: fakes for systemctl/journalctl/timedatectl, four fixture hosts
+  (systemd 255 + 259; Asia/Taipei, Asia/Singapore, Europe/Berlin, Etc/UTC),
+  installer tests (`npm run test:install`), E2E with two real agents.
+- Env (hub): `PITASKER_HOSTS`, `PITASKER_HOST_TOKEN_<ID>`,
+  `PITASKER_HOST_LABELS`, `PITASKER_HOST_PRODUCTION`, `PITASKER_BIN_MASTER`,
+  `PITASKER_ROOT_CRON_SNAPSHOT`, `PITASKER_ETC_DIR`. Agent (written by the
+  installer): `PITASKER_MODE=agent`, `PITASKER_AGENT_BIND`,
+  `PITASKER_AGENT_PORT`, `PITASKER_AGENT_TOKEN_SHA256`.
+
+### Changed
+- `tests/fake-crontab.sh` moved to `tests/fakes/crontab`.
+- E2E About test waits for the dialog animation before axe (was timing-dependent).
 
 ## [2.0.0] — 2026-09-30 (P1 + P2)
 

@@ -31,6 +31,32 @@ and the [2.0 plan](docs/plans/2.0.md).
   an **About** dialog (ⓘ in the header: version, stack, repo and a one-line
   diagnostics string to paste into bug reports).
 
+## Fleet view (2.1, unreleased: branch feat/2.1-fleet-view)
+
+The **Fleet** tab (`g f`) shows everything scheduled on the homelab, read-only:
+each host's zk and root crontab, `/etc/crontab`, `/etc/cron.d/*`,
+`cron.{hourly,daily,weekly,monthly}` and systemd timers (system + user), with
+plain-language schedules and next runs in **that host's** time zone, the
+last run (cron journal, log file or systemd), and hints: *same job on two
+hosts*, *script not in bin.git*, *bin replica differs* (from piapps2), *disabled*.
+Two views (by host / all jobs), filters and search kept in the URL. Nothing
+on the page edits or runs anything; piapps' own crontab links to the Crontab tab.
+
+- The hub (piapps) reads itself in-process. Other hosts run the **PiTasker
+  agent**: one file (`dist/agent.mjs`, node built-ins only), as zk, no
+  sudo, `GET /api/agent/health` + `GET /api/agent/cron` only, bearer token
+  (only its SHA-256 on the agent), bound to the LAN/tunnel address,
+  firewalled to the hub. Secrets in commands and env lines are redacted on
+  the agent before anything leaves the host.
+- Root's crontab comes from a root-owned snapshot unit
+  (`/var/lib/pitasker/root-crontab`), not sudo.
+- Install on a host: `npm run build:agent` on piapps, copy
+  `dist/agent.mjs`, then `scripts/install-agent.sh --dry-run --bind <ip> --bundle ~/agent.mjs …`
+  (see `--help`; `--update`, `--rollback`, `--uninstall`, `--root-snapshot-only` for the hub).
+- Hub settings: `PITASKER_HOSTS`, `PITASKER_HOST_TOKEN_<ID>`,
+  `PITASKER_HOST_LABELS`, `PITASKER_HOST_PRODUCTION`, `PITASKER_BIN_MASTER`
+  (see `.env.example`). The plan: [docs/plans/2.1-fleet-view.md](docs/plans/2.1-fleet-view.md).
+
 ## What it does
 
 - **One runner per task.** A task runs from the **crontab** (PiTasker keeps
@@ -107,22 +133,35 @@ npm run check               # tsc
 npm run check:theme         # no raw colours outside the --pi-* tokens
 npm test                    # vitest; DB suites need PITASKER_TEST_PG_URL (admin URL, creates pitasker_test_*)
 npm run test:e2e            # Playwright; needs PITASKER_TEST_PG_URL; serves dist-e2e/ on :5027
+                            # (+ fleet agents on :5028/:5029 from fixture hosts)
+npm run test:install        # scripts/install-agent.sh with stubs (no root, no real /etc)
+npm run check:shell         # shellcheck
+npm run build:agent         # dist/agent.mjs (fails if it isn't self-contained)
 ```
 
 Tests never touch the real crontab or database: a fake `crontab`
 (`tests/fakes/crontab`) is first on PATH with `FAKE_CRONTAB_FILE`, and the
 crontab code refuses to run under vitest/E2E without it; `server/db.ts`
 refuses any database but `pitasker_test_*` / `pitasker_e2e*` in a test run.
+The fleet collector likewise refuses the real `systemctl`, `journalctl`,
+`timedatectl`, `/etc`, `/home/zk/bin` and `/var/lib/pitasker` in tests: fakes
+(`tests/fakes/`) come from `PITASKER_FAKE_BIN_DIR`, fixture hosts from
+`tests/fixtures/fleet/` (systemd 255 and 259; Asia/Taipei, Asia/Singapore,
+Europe/Berlin, Etc/UTC) with a scratch bin.git each.
 
 ## Layout
 
 ```
-client/src/        React SPA (pages: tasks, crontab, logs, settings)
+client/src/        React SPA (pages: tasks, crontab, fleet, logs, settings)
 server/app.ts      Express app factory (routes, session, CSRF guard, CSP)
 server/crontab/    document.ts (line-preserving parser/editor), store.ts (crontab IO,
                    backups, read-back), sync.ts (tasks ⇄ crontab)
 server/services/   exec.ts (runs a command), taskRunner.ts, taskScheduler.ts,
                    cronSeen.ts, scriptCheck.ts
+server/fleet/      collector.ts (one host's snapshot, read-only), hub.ts (agents, saved
+                   snapshots), hints.ts, redact.ts, tools.ts (execFile, test guards)
+server/agent/      the agent (node:http) → dist/agent.mjs; deploy/ its systemd units
+shared/fleet.ts    the snapshot schema (zod, hub-side); shared/fleet-view.ts view helpers
 shared/cron.ts     cron validation, plain-language descriptions, next runs (server + client)
 shared/schema.ts   tables and validation
 migrations/        drizzle SQL; scripts/migrate*.mjs apply them
@@ -133,8 +172,7 @@ docs/plans/2.0.md  the 2.0 plan; docs/archive/ the 1.x notes
 
 From [docs/plans/2.0.md](docs/plans/2.0.md), after 2.0:
 
-- **P3 — fleet view (read-only)**: every homelab host's zk and root
-  crontabs, `/etc/cron.d` and systemd timers in one screen.
+- **P3 — fleet view (read-only)**: built on `feat/2.1-fleet-view` (above).
 - **P4 — fleet editing**: edit the zk crontab on piapps2, piapps3, piapps4
   and hwca-ap02 through a small, separate PiTasker agent (own token,
   LAN/WireGuard only, diff + backup + audit for every write). Root crontabs

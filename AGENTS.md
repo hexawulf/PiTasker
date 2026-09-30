@@ -11,7 +11,9 @@ npm run check                      # tsc (must pass)
 npm run check:theme                # UI colours only from --pi-* tokens
 PITASKER_TEST_PG_URL=postgres://postgres:…@127.0.0.1:5432/postgres npm test
 PITASKER_TEST_PG_URL=… npm run test:e2e     # PW_CHROMIUM=/path/to/chrome if browsers aren't installed
-npm run build
+npm run build                      # client + server + dist/agent.mjs
+npm run test:install               # installer tests (stubs; no root)
+npm run check:shell                # shellcheck
 npm run db:generate                # after editing shared/schema.ts (then review the SQL)
 npm run db:migrate | db:status     # never `drizzle-kit push` against a real database
 ```
@@ -35,6 +37,15 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
 - **Every `/api` route needs `isAuthenticated`** except `POST /api/auth/login`;
   `tests/unit/route-auth.test.ts` fails otherwise. State-changing requests
   are JSON (`sameOrigin`).
+- **The fleet view is read-only (P3).** The agent (`server/agent/`) has
+  exactly `GET /api/agent/health` and `GET /api/agent/cron`, no request
+  parameters, no write code; `/api/fleet*` routes are GET only (the
+  route-auth test checks). The collector runs programs only through
+  `runTool()` (execFile, fixed argv) and redacts before returning. Never
+  add sudo, a sudoers rule, or `NoNewPrivileges=` (or an option that
+  implies it) to the agent unit — setgid `crontab -l` needs it absent.
+- `dist/agent.mjs` must stay self-contained (node: built-ins only):
+  import only types from `shared/fleet.ts` in agent code; the build fails otherwise.
 - Jobs run with `jobEnv()` — never pass `process.env` (secrets) to them.
 - Schema changes: edit `shared/schema.ts`, `npm run db:generate`, commit
   the SQL + snapshot; never edit an applied migration.
