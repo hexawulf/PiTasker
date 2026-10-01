@@ -242,6 +242,16 @@ describe("guards: tests never reach the real system", () => {
     expect(() => fleetPaths({ ...process.env, PITASKER_ETC_DIR: "/etc" })).toThrow(/refusing/);
     expect(() => fleetPaths({ ...process.env, PITASKER_BIN_DIR: "/home/zk/bin" })).toThrow(/refusing/);
     expect(() => fleetPaths({ ...process.env, PITASKER_ROOT_CRON_SNAPSHOT: "/var/lib/pitasker/root-crontab" })).toThrow(/refusing/);
+    expect(() => fleetPaths({ ...process.env, PITASKER_BIN_DIR: "/home/zk/bin/sub" })).toThrow(/refusing/);
+    expect(() => fleetPaths({ ...process.env, PITASKER_BIN_DIR: "/home/zk/bin/../bin" })).toThrow(/refusing/);
+  });
+
+  it("allows fixtures in a checkout under /home/zk (the E2E on piapps)", () => {
+    host("alpha");
+    for (const dir of ["/home/zk/projects/PiTasker/.e2e/fleet/beta/home/bin", "/home/zk/binx", "/var/lib/pitasker-fixture/root-crontab"]) {
+      const key = dir.startsWith("/var") ? "PITASKER_ROOT_CRON_SNAPSHOT" : "PITASKER_BIN_DIR";
+      expect(() => fleetPaths({ ...process.env, [key]: dir })).not.toThrow();
+    }
     const env = { ...process.env };
     delete env.PITASKER_ETC_DIR;
     expect(() => fleetPaths(env)).toThrow(/refusing/);

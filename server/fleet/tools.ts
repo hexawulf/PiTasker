@@ -24,6 +24,12 @@ export type FleetPaths = {
   uid: number;
 };
 
+/** `v` is `dir` or a path inside it. */
+function within(v: string, dir: string): boolean {
+  const r = path.resolve(v);
+  return r === dir || r.startsWith(dir + "/");
+}
+
 export function fleetPaths(env: NodeJS.ProcessEnv = process.env): FleetPaths {
   const binDir = env.PITASKER_BIN_DIR || "/home/zk/bin";
   const p: FleetPaths = {
@@ -37,8 +43,9 @@ export function fleetPaths(env: NodeJS.ProcessEnv = process.env): FleetPaths {
   if (testMode()) {
     const real = [
       ["PITASKER_ETC_DIR", p.etcDir, (v: string) => path.resolve(v) === "/etc"],
-      ["PITASKER_BIN_DIR", p.binDir, (v: string) => path.resolve(v).startsWith("/home/zk")],
-      ["PITASKER_ROOT_CRON_SNAPSHOT", p.rootSnapshot, (v: string) => path.resolve(v).startsWith("/var/lib/pitasker")],
+      // The real bin dir only (a checkout under /home/zk must still be able to run the E2E fixtures).
+      ["PITASKER_BIN_DIR", p.binDir, (v: string) => within(v, "/home/zk/bin")],
+      ["PITASKER_ROOT_CRON_SNAPSHOT", p.rootSnapshot, (v: string) => within(v, "/var/lib/pitasker")],
     ] as const;
     for (const [name, value, isReal] of real) {
       if (!env[name] || isReal(value)) throw new Error(`refusing to read the real ${name} (${value}) in a test: set it to a fixture path`);
