@@ -16,7 +16,7 @@
 # Usage:       scripts/install-agent.sh --dry-run --bind 192.168.50.120 --bundle ~/agent.mjs
 #              scripts/install-agent.sh --bind 192.168.50.120 --ufw-allow-from 192.168.50.102 --bundle ~/agent.mjs
 #              scripts/install-agent.sh --bind 10.77.0.4 --ufw-allow-from 10.77.0.1 --ufw-interface wg-pideck \
-#                                       --after wg-quick@wg-pideck.service --memory-max 96M --bundle ~/agent.mjs
+#                                       --after wg-quick@wg-pideck.service --memory-max 128M --bundle ~/agent.mjs
 #              scripts/install-agent.sh --update --bundle ~/agent.mjs    # swap the bundle, keep .env
 #              scripts/install-agent.sh --rollback                       # back to agent.mjs.prev
 #              scripts/install-agent.sh --uninstall
@@ -44,7 +44,7 @@ PORT=5017
 UFW_FROM=""
 UFW_IFACE=""
 AFTER=""
-MEMORY_MAX=96M
+MEMORY_MAX=128M
 BUNDLE=""
 SKIP_HEALTH=0
 
@@ -60,7 +60,7 @@ PiTasker agent installer — scripts/install-agent.sh [options]
   --ufw-allow-from IP      add: ufw allow [in on IF] from IP to any port N proto tcp
   --ufw-interface IF       with --ufw-allow-from: only on this interface (e.g. wg-pideck)
   --after UNIT             start after (and pull in) UNIT, e.g. wg-quick@wg-pideck.service
-  --memory-max SIZE        systemd MemoryMax= (default 96M; at least 64M)
+  --memory-max SIZE        systemd MemoryMax= (default 128M; at least 64M)
   --update                 swap in --bundle (old one kept as agent.mjs.prev), keep .env, restart
   --rollback               go back to agent.mjs.prev, restart
   --uninstall              remove exactly what the installer recorded
@@ -109,7 +109,7 @@ fi
 if [ -n "$AFTER" ] && { ! [[ "$AFTER" =~ ^[A-Za-z0-9:_.@-]{1,200}\.(service|target|device|mount)$ ]] || [[ "$AFTER" == pitasker-agent.* ]]; }; then
   echo "--after must be a unit name like wg-quick@wg-pideck.service" >&2; exit 64
 fi
-if ! [[ "$MEMORY_MAX" =~ ^([0-9]+)([MG])$ ]]; then echo "--memory-max must look like 96M or 1G" >&2; exit 64; fi
+if ! [[ "$MEMORY_MAX" =~ ^([0-9]+)([MG])$ ]]; then echo "--memory-max must look like 128M or 1G" >&2; exit 64; fi
 mem_mb=$(( BASH_REMATCH[1] * $([ "${BASH_REMATCH[2]}" = G ] && echo 1024 || echo 1) ))
 [ "$mem_mb" -ge 64 ] || { echo "--memory-max must be at least 64M" >&2; exit 64; }
 

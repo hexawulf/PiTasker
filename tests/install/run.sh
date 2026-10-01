@@ -160,7 +160,7 @@ check "unit: AmbientCapabilities= (empty)" grep -qx 'AmbientCapabilities=' "$U"
 check "unit: no NoNewPrivileges=" bash -c "! grep -q '^NoNewPrivileges' '$U'"
 check "unit: nothing that implies NoNewPrivileges" bash -c "! grep -qE '^(PrivateDevices|ProtectKernel|ProtectClock|RestrictNamespaces|RestrictRealtime|RestrictSUIDSGID|LockPersonality|MemoryDenyWriteExecute|SystemCall|RestrictAddressFamilies|DynamicUser)' '$U'"
 check "unit: ProtectSystem=strict, ProtectHome=read-only, PrivateTmp" bash -c "grep -qx ProtectSystem=strict '$U' && grep -qx ProtectHome=read-only '$U' && grep -qx PrivateTmp=yes '$U'"
-check "unit: MemoryMax=96M, User=zk, runs agent.mjs" bash -c "grep -qx MemoryMax=96M '$U' && grep -qx User=zk '$U' && grep -q 'agent.mjs\$' '$U'"
+check "unit: MemoryMax=128M (default), User=zk, runs agent.mjs" bash -c "grep -qx MemoryMax=128M '$U' && grep -qx User=zk '$U' && grep -q 'agent.mjs\$' '$U'"
 check "unit: no placeholders left" bash -c "! grep -q '@[A-Z_]*@' '$U'"
 check "snapshot script installed 0755" [ "$(stat -c %a "$W/root/usr/local/lib/pitasker/root-cron-snapshot")" = 755 ]
 check "snapshot .service/.path/.timer installed" bash -c "for s in service path timer; do [ -f '$W/root/etc/systemd/system/pitasker-root-cron-snapshot.'\$s ] || exit 1; done"
