@@ -49,3 +49,5 @@ ehthumbs.db
 dist-e2e/
 test-results/
 playwright-report/
+# test fixtures (fake journalctl output) are not logs
+!tests/fixtures/fleet/*/journal.log

@@ -1,0 +1,5 @@
+1790819400.000000 alpha CRON[1000]: (@USER@) CMD (@HOME@/bin/status-poll >> @HOME@/logs/status-poll.log 2>&1)
+1790819700.000000 alpha CRON[1001]: (@USER@) CMD (@HOME@/bin/status-poll >> @HOME@/logs/status-poll.log 2>&1)
+1790805600.000000 alpha CRON[1002]: (@USER@) CMD (API_KEY=abc123def @HOME@/bin/backup-db --verbose)
+1790817420.000000 alpha CRON[1003]: (root) CMD (cd / && run-parts --report /etc/cron.hourly)
+1790817000.000000 alpha CRON[1004]: pam_unix(cron:session): session opened for user @USER@(uid=1000) by @USER@(uid=0)
