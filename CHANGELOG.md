@@ -3,7 +3,10 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [Unreleased] — 2.1.0 (P3: read-only fleet view), branch `feat/2.1-fleet-view`
+## [2.1.0] — 2026-10-01 (P3: read-only fleet view)
+
+Live on piapps (hub) with agents on piapps2 (LAN), piapps4, piapps3 and
+hwca-ap02 (wg-pideck); PiDeck watches `pitasker-agent` on the agent hosts.
 
 ### Added
 - **Fleet tab** (`g f`): every host's zk + root crontab, /etc/crontab,
@@ -38,6 +41,7 @@ All notable changes to PiTasker. Versions follow semver per phase
 ### Changed
 - `tests/fake-crontab.sh` moved to `tests/fakes/crontab`.
 - E2E About test waits for the dialog animation before axe (was timing-dependent).
+- About dialog: fleet view in the description and stack, release date October 2026.
 
 ## [2.0.0] — 2026-09-30 (P1 + P2)
 

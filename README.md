@@ -5,8 +5,9 @@ user's crontab from a web UI, and let PiTasker itself run the jobs that
 should not live in cron. Runs on piapps as the pm2 app `pitasker`
 (<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
 
-**Current version: 2.0.0** — released 2026-09-30, live on piapps with the
-CSP enforced. A fix-and-refresh release: one runner
+**Current version: 2.1.0** — released 2026-10-01: the read-only **Fleet**
+view across piapps, piapps2, piapps3, piapps4 and hwca-ap02 (below).
+2.0.0 (2026-09-30) was the fix-and-refresh release: one runner
 per job, a crontab that stays exactly as you wrote it, a diff before every
 write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md)
 and the [2.0 plan](docs/plans/2.0.md).
@@ -31,7 +32,7 @@ and the [2.0 plan](docs/plans/2.0.md).
   an **About** dialog (ⓘ in the header: version, stack, repo and a one-line
   diagnostics string to paste into bug reports).
 
-## Fleet view (2.1, unreleased: branch feat/2.1-fleet-view)
+## Fleet view (2.1)
 
 The **Fleet** tab (`g f`) shows everything scheduled on the homelab, read-only:
 each host's zk and root crontab, `/etc/crontab`, `/etc/cron.d/*`,
@@ -50,8 +51,9 @@ on the page edits or runs anything; piapps' own crontab links to the Crontab tab
   the agent before anything leaves the host.
 - Root's crontab comes from a root-owned snapshot unit
   (`/var/lib/pitasker/root-crontab`), not sudo.
-- Install on a host: `npm run build:agent` on piapps, copy
-  `dist/agent.mjs`, then `scripts/install-agent.sh --dry-run --bind <ip> --bundle ~/agent.mjs …`
+- Install on a host: `npm run build:agent` on piapps, copy `dist/agent.mjs`
+  **and** `scripts/install-agent.sh` + `deploy/` (the installer renders the
+  units from `../deploy/`), then `scripts/install-agent.sh --dry-run --bind <ip> --bundle ~/agent.mjs …`
   (see `--help`; `--update`, `--rollback`, `--uninstall`, `--root-snapshot-only` for the hub).
 - Hub settings: `PITASKER_HOSTS`, `PITASKER_HOST_TOKEN_<ID>`,
   `PITASKER_HOST_LABELS`, `PITASKER_HOST_PRODUCTION`, `PITASKER_BIN_MASTER`
@@ -172,7 +174,7 @@ docs/plans/2.0.md  the 2.0 plan; docs/archive/ the 1.x notes
 
 From [docs/plans/2.0.md](docs/plans/2.0.md), after 2.0:
 
-- **P3 — fleet view (read-only)**: built on `feat/2.1-fleet-view` (above).
+- **P3 — fleet view (read-only)**: released in 2.1.0 (above).
 - **P4 — fleet editing**: edit the zk crontab on piapps2, piapps3, piapps4
   and hwca-ap02 through a small, separate PiTasker agent (own token,
   LAN/WireGuard only, diff + backup + audit for every write). Root crontabs

@@ -9,7 +9,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { toast } from "@/hooks/use-toast";
 import { diagnosticsLine } from "@/lib/diagnostics";
 
-const RELEASE_DATE = "September 2026";
+const RELEASE_DATE = "October 2026";
 const REPO = "https://github.com/hexawulf/PiTasker";
 
 function Diagnostics() {
@@ -75,7 +75,7 @@ export default function AboutModal() {
           <DialogTitle>About PiTasker</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm">
-          <p className="text-pi-text-muted">The cron editor for the HexaWulf homelab: see, edit and run the jobs in your crontab, with a diff before every write.</p>
+          <p className="text-pi-text-muted">The cron editor for the HexaWulf homelab: see, edit and run the jobs in your crontab, with a diff before every write, and a read-only view of every scheduled job across the fleet.</p>
           <div>
             <h2 className="mb-1 font-bold">Tech Stack</h2>
             <ul className="list-outside list-disc space-y-1 pl-5">
@@ -86,6 +86,7 @@ export default function AboutModal() {
               <li>State Management: TanStack Query</li>
               <li>Routing: Wouter (deep-linkable tabs)</li>
               <li>Database: PostgreSQL + Drizzle ORM (migrations)</li>
+              <li>Fleet: read-only PiTasker agents (bearer token, LAN / WireGuard, no sudo)</li>
               <li>Auth: Session-based authentication, helmet + CSP</li>
             </ul>
           </div>
