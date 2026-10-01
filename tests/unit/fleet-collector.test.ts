@@ -289,18 +289,21 @@ describe("parsers", () => {
     expect(usecToIso("1790812800000000")).toBe("2026-10-01T00:00:00.000Z");
   });
 
-  it("parseJournal: newest start per user and command; ignores non-CMD and binary messages", () => {
+  it("parseJournal: newest start per user and command (short-unix); skips non-CMD lines", () => {
     const j = parseJournal(
       [
-        '{"__REALTIME_TIMESTAMP":"1000000","MESSAGE":"(zk) CMD (a)"}',
-        '{"__REALTIME_TIMESTAMP":"3000000","MESSAGE":"(zk) CMD (a)"}',
-        '{"__REALTIME_TIMESTAMP":"2000000","MESSAGE":"(root) CMD (b)"}',
-        '{"__REALTIME_TIMESTAMP":"2000000","MESSAGE":[1,2]}',
+        "1.000000 h CRON[1]: (zk) CMD (a)",
+        "3.250000 h CRON[2]: (zk) CMD (a)",
+        "2.5 h CRON[3]: (root) CMD (b >> /x.log 2>&1)",
+        "4.000000 h CRON[4]: pam_unix(cron:session): session opened for user zk(uid=1000) by zk(uid=0)",
+        "-- Boot 5cea6206a93045c9accd63434f657493 --",
         "garbage",
+        "",
       ].join("\n"),
     );
-    expect(j.get("zk")!.get("a")).toBe(3000);
-    expect(j.get("root")!.get("b")).toBe(2000);
+    expect(j.get("zk")!.get("a")).toBe(3250);
+    expect(j.get("root")!.get("b >> /x.log 2>&1")).toBe(2500);
+    expect([...j.keys()].sort()).toEqual(["root", "zk"]);
   });
 
   it.each([

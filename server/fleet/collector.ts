@@ -9,7 +9,7 @@
 //   /etc/crontab, /etc/cron.d/*             → system crontabs (user field)
 //   /etc/cron.{hourly,daily,weekly,monthly} → run-parts scripts
 //   systemctl [--user] list-timers --all -o json + two `systemctl show` calls
-//   journalctl (cron, 2 days, MESSAGE + timestamp only) → last start per command
+//   journalctl (cron, 2 days, short-unix, CMD lines only) → last start per command
 //   git --no-optional-locks -C /home/zk/bin rev-parse / status / ls-files → bin HEAD, tracked, dirty
 //
 // A failing source adds an entry to errors[]; the snapshot still comes back.
@@ -132,26 +132,23 @@ export function scriptInfo(p: string, binDir: string, bin: BinState | null): Scr
 
 // ─── cron journal ──────────────────────────────────────────────────────────
 
-/** journalctl -o json lines → user → command → newest start (ms). */
-export function parseJournal(jsonLines: string): Map<string, Map<string, number>> {
+/**
+ * journalctl -o short-unix lines → user → command → newest start (ms):
+ *   "1790641141.096707 piapps CRON[641478]: (zk) CMD (/home/zk/bin/x.sh >> …)"
+ * Lines that aren't a cron CMD (pam_unix, "-- Boot …", garbage) are skipped.
+ */
+const JOURNAL_CMD = /^(\d{1,12})\.(\d{1,6}) \S+ [^:\s]+: \(([^)\s]+)\) CMD \((.*)\)$/;
+export function parseJournal(text: string): Map<string, Map<string, number>> {
   const out = new Map<string, Map<string, number>>();
-  for (const line of jsonLines.split("\n")) {
-    if (!line.trim()) continue;
-    let e: { MESSAGE?: unknown; __REALTIME_TIMESTAMP?: unknown };
-    try {
-      e = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (typeof e.MESSAGE !== "string") continue;
-    const m = /^\(([^)\s]+)\) CMD \((.*)\)$/s.exec(e.MESSAGE);
+  for (const line of text.split("\n")) {
+    const m = JOURNAL_CMD.exec(line);
     if (!m) continue;
-    const at = Math.floor(Number(e.__REALTIME_TIMESTAMP) / 1000);
+    const at = Number(m[1]) * 1000 + Math.floor(Number(m[2].padEnd(6, "0")) / 1000);
     if (!Number.isFinite(at)) continue;
-    const byCmd = out.get(m[1]) ?? new Map<string, number>();
-    const cmd = m[2].trim();
+    const byCmd = out.get(m[3]) ?? new Map<string, number>();
+    const cmd = m[4].trim();
     if ((byCmd.get(cmd) ?? 0) < at) byCmd.set(cmd, at);
-    out.set(m[1], byCmd);
+    out.set(m[3], byCmd);
   }
   return out;
 }
@@ -159,8 +156,11 @@ export function parseJournal(jsonLines: string): Map<string, Map<string, number>
 async function readJournal(): Promise<Map<string, Map<string, number>>> {
   const out = await runTool(
     "journalctl",
-    ["--since=-2d", "-o", "json", "--output-fields=MESSAGE,__REALTIME_TIMESTAMP", "--no-pager", "-q", "SYSLOG_IDENTIFIER=CRON", "_SYSTEMD_UNIT=cron.service"],
-    { timeoutMs: 10_000, maxBytes: 8 * 1024 * 1024 },
+    // short-unix + --grep (journald filters): ~10× smaller than -o json —
+    // piapps: 0.8 MB instead of 7.9 MB for 2 days, and no JSON.parse per line
+    // (the JSON read pushed the agent's peak RSS from 88 to 121 MB on arm64).
+    ["--since=-2d", "-o", "short-unix", "--no-pager", "-q", "--grep=^\\(\\S+\\) CMD \\(", "SYSLOG_IDENTIFIER=CRON", "_SYSTEMD_UNIT=cron.service"],
+    { timeoutMs: 10_000, maxBytes: 4 * 1024 * 1024 },
   );
   return parseJournal(out);
 }
