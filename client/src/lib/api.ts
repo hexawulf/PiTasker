@@ -36,7 +36,7 @@ export async function api<T = unknown>(method: string, url: string, body?: unkno
   });
   const data = await parse(res);
   if (!res.ok) {
-    if (res.status === 401 && !url.startsWith("/api/auth/login")) onUnauthorized();
+    if (res.status === 401 && !url.startsWith("/api/auth/login") && !url.startsWith("/api/auth/firebase-login")) onUnauthorized();
     const msg = data && typeof data === "object" && "message" in data ? String((data as { message: unknown }).message) : res.statusText;
     throw new ApiError(res.status, msg, data);
   }

@@ -25,8 +25,10 @@ export const FIREBASE_CSP = {
     "https://www.gstatic.com",
   ],
   connect: [
+    "https://apis.google.com",
     "https://*.googleapis.com",
     "https://*.firebaseio.com",
+    "https://*.firebaseapp.com",
     "https://identitytoolkit.googleapis.com",
     "https://securetoken.googleapis.com",
   ],

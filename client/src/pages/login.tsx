@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { useLocation } from "wouter";
 import { ListTodo, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function LoginPage() {
   const id = useId();
+  const [, setLocation] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function LoginPage() {
     try {
       const idToken = await signInWithGooglePopup(firebase);
       await firebaseLogin(idToken);
+      setLocation("/tasks");
     } catch (err: unknown) {
       let errorMessage = "Google sign-in failed";
       if (err instanceof Error) {
@@ -72,6 +75,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(username, password);
+      setLocation("/tasks");
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
