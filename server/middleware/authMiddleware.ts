@@ -4,6 +4,8 @@ import type session from "express-session";
 export interface AuthenticatedSession extends session.Session {
   userId?: number;
   user?: { id: number; username: string };
+  authMethod?: string;
+  email?: string;
 }
 
 export function sessionUser(req: Request): { id: number; username: string } | null {

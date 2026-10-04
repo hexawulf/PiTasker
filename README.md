@@ -5,12 +5,7 @@ user's crontab from a web UI, and let PiTasker itself run the jobs that
 should not live in cron. Runs on piapps as the pm2 app `pitasker`
 (<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
 
-**Current version: 2.1.0** — released 2026-10-01: the read-only **Fleet**
-view across piapps, piapps2, piapps3, piapps4 and hwca-ap02 (below).
-2.0.0 (2026-09-30) was the fix-and-refresh release: one runner
-per job, a crontab that stays exactly as you wrote it, a diff before every
-write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md)
-and the [2.0 plan](docs/plans/2.0.md).
+**Current version: 2.2.0** — released 2026-10-04: Google Firebase authentication with email allowlist & break-glass fallback. 2.1.0 (2026-10-01) added the read-only **Fleet** view across piapps, piapps2, piapps3, piapps4 and hwca-ap02. 2.0.0 (2026-09-30) was the fix-and-refresh release: one runner per job, a crontab that stays exactly as you wrote it, a diff before every write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md).
 
 ![PiTasker 2.0 — Tasks (light theme, demo crontab)](docs/screenshots/tasks.png)
 
@@ -111,21 +106,15 @@ listed in [.env.example](.env.example); new in 2.0: `CSP_ENFORCE`,
 `PITASKER_CLOUDFLARE`, `PITASKER_ORIGIN`, `PITASKER_TZ`, `PITASKER_RUN_TIMEOUT_MS`,
 `PITASKER_OUTPUT_CAP`, `PITASKER_STATE_DIR`, `PITASKER_CRONTAB_BIN`,
 `PITASKER_BIN_DIR`, `PITASKER_CRON_JOURNAL`, `HOST`,
-`PITASKER_ADMIN_USER`/`PITASKER_ADMIN_PASSWORD` (seed only). The Firebase
-variables are gone.
+`PITASKER_ADMIN_USER`/`PITASKER_ADMIN_PASSWORD` (seed only). Firebase Auth parameters (`FIREBASE_ENABLED`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_ALLOWED_EMAILS`, and client credentials).
 
 ## Security
 
-Login required for every `/api` route except login itself (a test walks the
-router to enforce it). Login and password changes are rate-limited
-(10 / 10 min per client; `PITASKER_CLOUDFLARE=1` counts per
-CF-Connecting-IP — only when the proxy in front does *not* already restore the
-client IP; piapps' nginx does, so it stays off there). Session cookie `pitasker.sid`: Secure, HttpOnly,
-SameSite=Lax, new id at login. State-changing requests must be same-origin
-JSON. helmet headers and a CSP with hashes of the inline scripts (Report-Only
-until `CSP_ENFORCE=true`; violations are logged as `[csp]` lines). New
-passwords: at least 12 characters, not the username or the current one;
-changing it logs out other sessions.
+- **Authentication**: Sign in with Google (Firebase Auth) restricted strictly to authorized operator email addresses (`FIREBASE_ALLOWED_EMAILS`), with the local username/password retained as an offline/break-glass fallback.
+- **Route protection**: Login required for every `/api` route except login endpoints and public config (a test walks the router to enforce it).
+- **Rate limiting**: Login and password changes are rate-limited (10 / 10 min per client; `PITASKER_CLOUDFLARE=1` counts per CF-Connecting-IP — only when the proxy in front does *not* already restore the client IP; piapps' nginx does, so it stays off there).
+- **Session & CSP**: Session cookie `pitasker.sid`: Secure, HttpOnly, SameSite=Lax, regenerated at login. State-changing requests must be same-origin JSON. Helmet headers and a strict CSP with hashes of the inline scripts and scoped Firebase Auth domains (Report-Only until `CSP_ENFORCE=true`; violations are logged as `[csp]` lines).
+- **Password rules**: At least 12 characters, not the username or the current one; changing it logs out other sessions.
 
 ## Development and tests
 

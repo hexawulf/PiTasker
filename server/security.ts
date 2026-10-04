@@ -18,6 +18,22 @@ export const CLOUDFLARE_INSIGHTS = {
   connect: "https://cloudflareinsights.com",
 };
 
+export const FIREBASE_CSP = {
+  script: [
+    "https://apis.google.com",
+    "https://*.firebaseapp.com",
+    "https://www.gstatic.com",
+  ],
+  connect: [
+    "https://*.googleapis.com",
+    "https://*.firebaseio.com",
+    "https://identitytoolkit.googleapis.com",
+    "https://securetoken.googleapis.com",
+  ],
+  frame: ["https://*.firebaseapp.com", "https://accounts.google.com"],
+  img: ["https://*.googleusercontent.com", "https://www.gstatic.com"],
+};
+
 export function inlineScriptHashes(html: string): string[] {
   const hashes: string[] = [];
   for (const m of html.matchAll(INLINE_SCRIPT_RE)) {
@@ -26,15 +42,33 @@ export function inlineScriptHashes(html: string): string[] {
   return hashes;
 }
 
-export function cspDirectives(scriptHashes: string[]): Record<string, string[]> {
+export function cspDirectives(scriptHashes: string[], opts?: { firebase?: boolean }): Record<string, string[]> {
+  const allowFirebase = opts?.firebase ?? (
+    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "true" ||
+    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "1" ||
+    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "yes"
+  );
+  const scriptSrc = ["'self'", ...scriptHashes, CLOUDFLARE_INSIGHTS.script];
+  const connectSrc = ["'self'", CLOUDFLARE_INSIGHTS.connect];
+  const frameSrc = ["'self'"];
+  const imgSrc = ["'self'", "data:"];
+
+  if (allowFirebase) {
+    scriptSrc.push(...FIREBASE_CSP.script);
+    connectSrc.push(...FIREBASE_CSP.connect);
+    frameSrc.push(...FIREBASE_CSP.frame);
+    imgSrc.push(...FIREBASE_CSP.img);
+  }
+
   return {
     "default-src": ["'self'"],
-    "script-src": ["'self'", ...scriptHashes, CLOUDFLARE_INSIGHTS.script],
+    "script-src": scriptSrc,
     // Radix (popper positioning) writes inline style attributes.
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:"],
+    "img-src": imgSrc,
     "font-src": ["'self'", "data:"],
-    "connect-src": ["'self'", CLOUDFLARE_INSIGHTS.connect],
+    "connect-src": connectSrc,
+    "frame-src": frameSrc,
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],

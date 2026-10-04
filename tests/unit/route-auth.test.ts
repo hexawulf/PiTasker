@@ -6,7 +6,11 @@ import type { Server } from "http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app";
 
-const PUBLIC = new Set(["POST /api/auth/login"]);
+const PUBLIC = new Set([
+  "POST /api/auth/login",
+  "POST /api/auth/firebase-login",
+  "GET /api/auth/config",
+]);
 
 type Layer = {
   route?: { path: string; methods: Record<string, boolean> };
@@ -76,6 +80,18 @@ describe("every /api route requires a login", () => {
   it("the public login route exists and rejects an empty body", async () => {
     const res = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     expect(res.status).toBe(400);
+  });
+
+  it("the public firebase login route exists and rejects an empty body", async () => {
+    const res = await fetch(`${base}/api/auth/firebase-login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    expect(res.status).toBe(400);
+  });
+
+  it("the public config route exists and returns firebase public config", async () => {
+    const res = await fetch(`${base}/api/auth/config`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("firebase");
   });
 });
 

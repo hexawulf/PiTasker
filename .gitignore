@@ -51,3 +51,7 @@ test-results/
 playwright-report/
 # test fixtures (fake journalctl output) are not logs
 !tests/fixtures/fleet/*/journal.log
+
+# Firebase Auth plan and credentials
+docs/plans/firebase-google-auth.md
+*firebase-service-account*.json

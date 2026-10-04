@@ -3,6 +3,14 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.2.0] — 2026-10-04 (Google Firebase authentication & break-glass fallback)
+
+### Added
+- **Authentication**: Google Firebase Authentication with strict server-side email allowlist (`FIREBASE_ALLOWED_EMAILS`).
+- **Break-glass access**: Retained local username & password authentication as an offline break-glass fallback.
+- **Security & CSP**: Updated helmet Content-Security-Policy to allow Firebase Auth domains in `script-src`, `connect-src`, `frame-src`, and `img-src`.
+- **API**: Added `GET /api/auth/config` for client initialization and `POST /api/auth/firebase-login` with rate limiting and session regeneration.
+
 ## [2.1.0] — 2026-10-01 (P3: read-only fleet view)
 
 Live on piapps (hub) with agents on piapps2 (LAN), piapps4, piapps3 and
