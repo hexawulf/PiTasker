@@ -3,6 +3,11 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
+
+### Fixed
+- **Authentication**: Disabled helmet default `Cross-Origin-Opener-Policy: same-origin` and configured `Referrer-Policy: strict-origin-when-cross-origin`. This prevents the browser from severing `window.opener` during Google OAuth popup flows, resolving `Firebase: Error (auth/popup-closed-by-user)`.
+
 ## [2.2.0] — 2026-10-04 (Google Firebase authentication & break-glass fallback)
 
 ### Added

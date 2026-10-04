@@ -85,6 +85,9 @@ export function installSecurityHeaders(app: Express): void {
     helmet({
       contentSecurityPolicy: false,
       crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       hsts: false, // nginx/Cloudflare own HSTS for the domain
     }),
   );
