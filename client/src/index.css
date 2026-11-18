@@ -12,7 +12,6 @@
  *            │
  *            ├─ shadcn tokens (--background, --card, …)  → components/ui/*
  *            └─ --pi-* tokens → tailwind `pi` colors (bg-pi-card, text-pi-text, …)
- *                               and the .pi-* helper classes below
  *
  *  Components must use tokens, never raw palette classes or hex
  *  (enforced by scripts/check-theme-tokens.sh, npm run check:theme).
@@ -130,121 +129,6 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-}
-
-/* PiDeck specific styles */
-.pi-dark {
-  background-color: var(--pi-dark);
-}
-
-.pi-darker {
-  background-color: var(--pi-darker);
-}
-
-.pi-card {
-  background-color: var(--pi-card);
-}
-
-.pi-card-hover {
-  background-color: var(--pi-card-hover);
-}
-
-.pi-border {
-  border-color: var(--pi-border);
-}
-
-.pi-text {
-  color: var(--pi-text);
-}
-
-.pi-text-muted {
-  color: var(--pi-text-muted);
-}
-
-.pi-accent {
-  background-color: var(--pi-accent);
-}
-
-.pi-success {
-  color: var(--pi-success);
-}
-
-.pi-warning {
-  color: var(--pi-warning);
-}
-
-.pi-error {
-  color: var(--pi-error);
-}
-
-/* Tab button styles */
-.tab-button {
-  @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors;
-}
-
-.tab-button.active {
-  background-color: var(--pi-accent);
-  color: var(--pi-on-accent);
-}
-
-.tab-button:not(.active) {
-  color: var(--pi-text-muted);
-}
-
-.tab-button:not(.active):hover {
-  color: var(--pi-text);
-  background-color: var(--pi-card-hover);
-}
-
-/* Custom scrollbar */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--pi-border) var(--pi-darker);
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--pi-darker);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--pi-border);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--pi-card-hover);
-}
-
-/* Status indicators */
-.status-running {
-  background-color: var(--pi-success);
-}
-
-.status-stopped {
-  background-color: var(--pi-error);
-}
-
-.status-warning {
-  background-color: var(--pi-warning);
-}
-
-.status-online {
-  background-color: var(--pi-success-soft);
-  color: var(--pi-success);
-}
-
-.status-offline {
-  background-color: var(--pi-error-soft);
-  color: var(--pi-error);
-}
-
-.status-restart {
-  background-color: var(--pi-warning-soft);
-  color: var(--pi-warning);
 }
 
 /* Crontab view: one row per line, kind-specific colours (tokens only). */

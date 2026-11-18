@@ -3,6 +3,12 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [Unreleased]
+
+### Changed
+- **Dependencies (`PT-A10`, `PT-A22`)**: Replaced the umbrella `firebase` package with `@firebase/app` + `@firebase/auth` (removing unused Firestore/gRPC subtrees from `node_modules`), and removed unused `@tailwindcss/typography` and `tailwindcss-animate` (which pulled `tailwindcss` into production `node_modules` via peerDependencies).
+- **Codebase slimming (`PT-A23`, `PT-A24`, `PT-A25`)**: Removed dead `client/src/lib/notify.ts`, stub `server/services/notificationService.ts`, obsolete 1.x `docs/archive/verify-crontab-integration.sh`, unused 1.x CSS classes in `client/src/index.css`, unused `DatabaseStorage.tasksByIds` / `deleteRunsBefore` methods, unused Radix component re-exports (`DialogPortal`, `DialogOverlay`, `DialogClose`, `DialogFooter`, `ToastAction`, `reducer`), and the `shared/fleet.ts` ↔ `shared/fleet-view.ts` circular import. Compressed `docs/screenshots/tasks.png`.
+
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 
 ### Fixed
