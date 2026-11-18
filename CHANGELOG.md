@@ -3,6 +3,13 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [Unreleased]
+
+### Performance
+- **Client Bundle & Code Splitting**: Split `@/lib/firebase` (`firebase/app` + `firebase/auth`) into a dedicated on-demand chunk loaded only on the login page when Firebase Auth is enabled, and lazy-loaded `LoginPage`, `CrontabPage`, `FleetPage`, `LogsPage`, and `SettingsPage` via `React.lazy` (PT-A16).
+- **Server Crontab & Journal Path**: Shared the 3 s crontab read cache (with in-flight request deduplication and immediate write invalidation) across `GET /api/crontab` and `GET /api/crontab/validate` (PT-A18); switched `server/services/cronSeen.ts` from `journalctl -o json` (16 MB buffer) to `runTool("journalctl", [..., "-o", "short-unix", "--grep=..."])` and parallelized log file `stat` checks (PT-A17); parallelized `git` and `/etc/cron.*` checks in `collector.ts`, `scriptCheck.ts`, and `sync.ts` (PT-A19, PT-A21).
+- **Client Rendering & Queries**: Gated `/api/auth/config` to run only when signed out, cached `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` instances in `client/src/lib/format.ts`, pre-grouped fleet rows by `hostId` with `useMemo`, and invalidated `/api/crontab/validate` after crontab mutations (PT-A20).
+
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 
 ### Fixed

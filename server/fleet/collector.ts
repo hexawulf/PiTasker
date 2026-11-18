@@ -98,9 +98,12 @@ export async function binState(binDir: string): Promise<BinState | null> {
   // --no-optional-locks: `git status` must never try to refresh .git/index (the
   // agent's home is read-only, and it only reads).
   const git = (args: string[]) => runTool("git", ["--no-optional-locks", "-C", binDir, ...args], { timeoutMs: 8_000 });
-  const head = await git(["rev-parse", "HEAD"]).then((s) => s.trim()).catch(() => null);
+  const [head, ls, status] = await Promise.all([
+    git(["rev-parse", "HEAD"]).then((s) => s.trim()).catch(() => null),
+    git(["ls-files", "-z"]).catch(() => ""),
+    git(["status", "--porcelain=v1", "-z"]).catch(() => ""),
+  ]);
   if (!head) return { head: null, dirty: false, tracked: null, dirtyFiles: new Set() };
-  const [ls, status] = await Promise.all([git(["ls-files", "-z"]).catch(() => ""), git(["status", "--porcelain=v1", "-z"]).catch(() => "")]);
   const tracked = new Set(ls.split("\0").filter(Boolean));
   const dirtyFiles = new Set(
     status
@@ -282,33 +285,38 @@ async function systemFiles(ctx: Ctx): Promise<FileSource[]> {
   }
   const dir = path.join(ctx.paths.etcDir, "cron.d");
   const names = fs.existsSync(dir) ? (await fs.promises.readdir(dir)).filter((n) => RUN_PARTS_NAME.test(n)).sort() : [];
-  for (const name of names) {
-    const f = path.join(dir, name);
-    if (!(await fs.promises.stat(f)).isFile()) continue;
-    const text = await fs.promises.readFile(f, "utf8");
-    out.push({ kind: "cron.d", file: name, ...crontabEntries(`cron.d:${name}`, text, true, null, ctx) });
-  }
+  const cronDFiles = await Promise.all(
+    names.map(async (name): Promise<FileSource | null> => {
+      const f = path.join(dir, name);
+      if (!(await fs.promises.stat(f)).isFile()) return null;
+      const text = await fs.promises.readFile(f, "utf8");
+      return { kind: "cron.d", file: name, ...crontabEntries(`cron.d:${name}`, text, true, null, ctx) };
+    }),
+  );
+  for (const item of cronDFiles) if (item) out.push(item);
   return out;
 }
 
 async function runParts(ctx: Ctx): Promise<RunPartsSource[]> {
-  const out: RunPartsSource[] = [];
-  for (const dir of RUN_PARTS) {
-    const d = path.join(ctx.paths.etcDir, dir);
-    if (!fs.existsSync(d)) continue;
-    const scripts: string[] = [];
-    for (const name of (await fs.promises.readdir(d)).sort()) {
-      if (!RUN_PARTS_NAME.test(name)) continue;
-      try {
-        const st = await fs.promises.stat(path.join(d, name));
-        if (st.isFile() && st.mode & 0o111) scripts.push(name);
-      } catch {
-        /* vanished */
-      }
-    }
-    out.push({ kind: "run-parts", dir, scripts });
-  }
-  return out;
+  const dirs = await Promise.all(
+    RUN_PARTS.map(async (dir): Promise<RunPartsSource | null> => {
+      const d = path.join(ctx.paths.etcDir, dir);
+      if (!fs.existsSync(d)) return null;
+      const entries = (await fs.promises.readdir(d)).filter((n) => RUN_PARTS_NAME.test(n)).sort();
+      const checked = await Promise.all(
+        entries.map(async (name) => {
+          try {
+            const st = await fs.promises.stat(path.join(d, name));
+            return st.isFile() && st.mode & 0o111 ? name : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return { kind: "run-parts", dir, scripts: checked.filter((x): x is string => x !== null) };
+    }),
+  );
+  return dirs.filter((x): x is RunPartsSource => x !== null);
 }
 
 // ─── systemd timers ────────────────────────────────────────────────────────

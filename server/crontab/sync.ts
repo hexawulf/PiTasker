@@ -129,12 +129,14 @@ export async function importFromCrontab(opts: { ids?: string[]; dryRun?: boolean
   }
 
   // Crontab-run tasks whose line is gone: flag them (not deleted: the operator decides).
+  const missingUpdates: Promise<unknown>[] = [];
   for (const t of tasks) {
     if (t.isSystemManaged !== false && !seenTaskIds.has(t.id)) {
       result.missing.push(t.id);
-      if (!opts.dryRun && t.syncedToCrontab) await storage.updateTask(t.id, { syncedToCrontab: false });
+      if (!opts.dryRun && t.syncedToCrontab) missingUpdates.push(storage.updateTask(t.id, { syncedToCrontab: false }));
     }
   }
+  if (missingUpdates.length > 0) await Promise.all(missingUpdates);
   return result;
 }
 
@@ -167,10 +169,13 @@ export async function exportToCrontab(opts: MutateOptions & { taskIds?: number[]
     return cur;
   }, opts);
 
-  if (!opts.dryRun) {
-    for (const [taskId, crontabId] of ids) {
-      await storage.updateTask(taskId, { crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
-    }
+  if (!opts.dryRun && ids.size > 0) {
+    const syncedAt = new Date();
+    await Promise.all(
+      [...ids.entries()].map(([taskId, crontabId]) =>
+        storage.updateTask(taskId, { crontabId, syncedToCrontab: true, crontabSyncedAt: syncedAt }),
+      ),
+    );
   }
   return { ...r, exported, unchanged, skipped };
 }

@@ -59,17 +59,27 @@ function idParam(req: Request, res: Response): number | null {
 }
 
 let crontabCache: { at: number; value: Awaited<ReturnType<typeof readCrontab>> | null } | null = null;
+let crontabInflight: Promise<Awaited<ReturnType<typeof readCrontab>> | null> | null = null;
 export function invalidateCrontabCache() {
   crontabCache = null;
+  crontabInflight = null;
 }
-async function cachedCrontab() {
+export async function cachedCrontab() {
   if (crontabCache && Date.now() - crontabCache.at < 3_000) return crontabCache.value;
-  const value = await readCrontab().catch((e) => {
-    console.warn(`[tasks] cannot read the crontab: ${(e as Error).message}`);
-    return null;
-  });
-  crontabCache = { at: Date.now(), value };
-  return value;
+  crontabInflight ??= readCrontab()
+    .then((value) => {
+      crontabCache = { at: Date.now(), value };
+      return value;
+    })
+    .catch((e) => {
+      console.warn(`[tasks] cannot read the crontab: ${(e as Error).message}`);
+      crontabCache = { at: Date.now(), value: null };
+      return null;
+    })
+    .finally(() => {
+      crontabInflight = null;
+    });
+  return crontabInflight;
 }
 
 export async function buildTaskViews(tasks: Task[]): Promise<TaskView[]> {

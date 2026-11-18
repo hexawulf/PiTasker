@@ -1,4 +1,16 @@
-// Small display helpers (no date library: Intl does it).
+// Small display helpers (no date library: Intl does it, with cached formatters).
+
+const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const dtfCache = new Map<string, Intl.DateTimeFormat>();
+
+function getDateTimeFormatter(key: string, opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  let fmt = dtfCache.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-GB", opts);
+    dtfCache.set(key, fmt);
+  }
+  return fmt;
+}
 
 export function formatDuration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined) return "—";
@@ -18,7 +30,6 @@ export function relativeTime(date: string | Date | null | undefined, now = Date.
   if (Number.isNaN(t)) return "—";
   const diff = Math.round((t - now) / 1000);
   const abs = Math.abs(diff);
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   if (abs < 45) return "just now"; // either side: DB and browser clocks differ by a little
   if (abs < 3600) return rtf.format(Math.round(diff / 60), "minute");
   if (abs < 86400) return rtf.format(Math.round(diff / 3600), "hour");
@@ -29,7 +40,8 @@ export function relativeTime(date: string | Date | null | undefined, now = Date.
 export function formatRunTime(date: Date | string, timeZone: string): string {
   const d = new Date(date);
   const soon = Math.abs(d.getTime() - Date.now()) < 6 * 86400_000;
-  return new Intl.DateTimeFormat("en-GB", {
+  const key = `run:${timeZone}:${soon ? "soon" : "far"}`;
+  return getDateTimeFormatter(key, {
     timeZone,
     hourCycle: "h23",
     hour: "2-digit",
@@ -40,5 +52,6 @@ export function formatRunTime(date: Date | string, timeZone: string): string {
 
 export function formatDateTime(date: Date | string | null | undefined, timeZone?: string): string {
   if (!date) return "—";
-  return new Intl.DateTimeFormat("en-GB", { timeZone, dateStyle: "medium", timeStyle: "medium", hourCycle: "h23" }).format(new Date(date));
+  const key = `dt:${timeZone ?? "local"}`;
+  return getDateTimeFormatter(key, { timeZone, dateStyle: "medium", timeStyle: "medium", hourCycle: "h23" }).format(new Date(date));
 }

@@ -31,6 +31,7 @@ export function useAuth() {
     refetchOnWindowFocus: true,
   });
 
+  // Only fetch public Firebase login config when signed out (on the login screen).
   const authConfig = useQuery<AuthConfig>({
     queryKey: ["/api/auth/config"],
     queryFn: async () => {
@@ -40,6 +41,7 @@ export function useAuth() {
         return { firebase: { enabled: false } };
       }
     },
+    enabled: me.data === null,
     staleTime: 10 * 60_000,
   });
 
