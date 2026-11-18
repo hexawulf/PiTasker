@@ -16,7 +16,7 @@ const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Re
   fn(req, res).catch((e: Error & { status?: number }) => {
     if (e.status && e.status >= 400 && e.status < 600) return res.status(e.status).json({ message: e.message });
     console.error(`[crontab] ${req.method} ${req.path}:`, e);
-    res.status(500).json({ message: e.message });
+    next(e);
   });
 
 function writeOpts(req: Request): MutateOptions {

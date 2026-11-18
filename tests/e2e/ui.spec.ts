@@ -12,6 +12,30 @@ test("logs widget lists PiTasker's log files and shows the tail", async ({ page 
   expect(dotLog).toEqual([]);
 });
 
+test("login page hides Google button when Firebase is disabled and shows it when enabled", async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await expect(page.getByTestId("login-username")).toBeVisible();
+  await expect(page.getByTestId("google-login-button")).toHaveCount(0);
+
+  await page.route("**/api/auth/config", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        firebase: {
+          enabled: true,
+          apiKey: "dummy-api-key",
+          authDomain: "dummy.firebaseapp.com",
+          projectId: "dummy-project",
+        },
+      }),
+    }),
+  );
+  await page.reload();
+  await expect(page.getByTestId("google-login-button")).toBeVisible();
+});
+
 test("theme toggle switches and persists", async ({ page }) => {
   await page.goto("/tasks");
   const html = page.locator("html");

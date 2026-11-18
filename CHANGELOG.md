@@ -3,6 +3,13 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [Unreleased]
+
+### Security
+- **Authentication & Sessions**: Enabled `checkRevoked: true` in Firebase ID token verification (PT-A01); removed `applicationDefault()` fallback so missing Firebase service account configuration fails closed (PT-A02); bounded `loginLimiter` map size (`MAX_BUCKET_SIZE = 10_000`), reset per-client rate-limit counters on successful login, bounded username/password/token lengths, verified `req.session.save` errors, and matched cookie attributes on `res.clearCookie` (PT-A06).
+- **CSRF & Input Validation**: Validated `Referer` in `sameOrigin` when `Origin` is absent (PT-A07); rejected embedded newlines and control characters in cron schedules, task names, and commands (PT-A03); mounted `installCsp` before `/api` routes so API responses include `Content-Security-Policy` (PT-A11).
+- **Filesystem, Process & Fleet Hardening**: Rejected symlinks and leading-dash filenames in `/api/pitasker-logs/file`, passed `--` to `tail`, and guarded against double responses (PT-A05); delegated unhandled 500 errors in `/api/crontab` to the global error handler instead of returning raw `e.message` (PT-A08); extended fleet redaction rules for space-separated CLI secret flags, `-u user:pass`, standalone API token prefixes, and credential/cookie/webhook env vars (PT-A09); improved child stream cleanup, `crontab` stdin error handling, log retention path prefix check, and agent failure limiter eviction (PT-A12, PT-A13, PT-A14); added non-major dependency security updates and `overrides` (PT-A04).
+
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 
 ### Fixed

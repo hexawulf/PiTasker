@@ -1,13 +1,17 @@
 // Redaction for the fleet view (docs/plans/2.1-fleet-view.md › Security).
 // Copied from PiDeck (server/services/agent-logs/redact.ts, same rules and
-// the same false-positive list in tests/unit/redact.test.ts), plus two
-// crontab rules. Runs on the agent (and in the hub's local collector) before
-// a command, line or env value leaves the host. Always on.
+// the same false-positive list in tests/unit/redact.test.ts), plus crontab
+// and CLI/token rules. Runs on the agent (and in the hub's local collector)
+// before a command, line or env value leaves the host. Always on.
 //
 //   Authorization: <anything to end of line>    → Authorization: [REDACTED]
 //   Bearer <token>                              → Bearer [REDACTED]
 //   <…password|passwd|token|secret|api_key> = / : <value>   (incl. JSON "key": "value")
 //                                               → key=[REDACTED]
+//   --password / --token / --api-key / --secret <value>
+//                                               → --flag [REDACTED]
+//   -u / --user user:pass                       → -u user:[REDACTED]
+//   ghp_… / github_pat_… / sk-… / xoxb-…        → [REDACTED]
 //   scheme://user:pass@host                     → scheme://user:[REDACTED]@host
 //
 //   NAME_KEY=value / FOO_AUTH=value (upper-case env assignment, e.g. before a
@@ -18,8 +22,8 @@
 // end in a secret word), tokenizer=…, "secret: false|true|null" style flags.
 //
 // Crontab env lines (redactEnv): a name ending in KEY|TOKEN|SECRET|PASS|
-// PASSWORD|AUTH gets its whole value replaced; other values go through
-// redactLine (e.g. a URL with credentials in PATH-like values).
+// PASSWORD|AUTH|CREDENTIAL|CREDENTIALS|COOKIE|WEBHOOK gets its whole value
+// replaced; other values go through redactLine (e.g. a URL with credentials).
 
 export const REDACTED = "[REDACTED]";
 
@@ -34,7 +38,7 @@ const RULES: Rule[] = [
     // commands often start with them). Before key-value, which would leave
     // *_AUTH / *_KEY (without API_) alone.
     name: "env-assignment",
-    re: /\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASS|PASSWORD|PASSWD|AUTH))(=)("[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|]+)/g,
+    re: /\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASS|PASSWORD|PASSWD|AUTH|CREDENTIAL|CREDENTIALS|COOKIE|WEBHOOK))(=)("[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|]+)/g,
     replace: (m, key, sep, value) => {
       const quote = value[0] === '"' || value[0] === "'" ? value[0] : "";
       const inner = quote ? value.slice(1, -1) : value;
@@ -68,6 +72,28 @@ const RULES: Rule[] = [
       return inner === "" || HARMLESS.test(inner) ? m : `${key}${sep}${quote}${REDACTED}${quote}`;
     },
   },
+  {
+    // Space-separated CLI flags: --password secret, --token ghp_xxx, --api-key xxx
+    name: "cli-flag",
+    re: /(^|\s)(--(?:[a-z0-9-]+-)?(?:password|passwd|passphrase|token|secret|api-key))(\s+)("[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|-][^\s"';&|]*)/gi,
+    replace: (m, pre, flag, sp, value) => {
+      const quote = value[0] === '"' || value[0] === "'" ? value[0] : "";
+      const inner = quote ? value.slice(1, -1) : value;
+      return inner === "" || HARMLESS.test(inner) ? m : `${pre}${flag}${sp}${quote}${REDACTED}${quote}`;
+    },
+  },
+  {
+    // curl-style -u / --user user:password
+    name: "cli-user-pass",
+    re: /(^|\s)(-u|--user)(\s+)([^\s:'"]+):("[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|]+)/g,
+    replace: (_m, pre, flag, sp, user) => `${pre}${flag}${sp}${user}:${REDACTED}`,
+  },
+  {
+    // Well-known standalone API token prefixes (GitHub PAT, OpenAI/Anthropic sk-, Slack xox-)
+    name: "token-prefix",
+    re: /\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g,
+    replace: () => REDACTED,
+  },
 ];
 
 export type Redacted = { text: string; count: number };
@@ -90,7 +116,7 @@ export function redactLine(line: string): Redacted {
 export const REDACTION_RULES = RULES.map((r) => r.name);
 
 /** An env name whose value is a secret by name alone. */
-export const SECRET_ENV_NAME = /(KEY|TOKEN|SECRET|PASS|PASSWORD|AUTH)$/i;
+export const SECRET_ENV_NAME = /(KEY|TOKEN|SECRET|PASS|PASSWORD|PASSWD|AUTH|CREDENTIAL|CREDENTIALS|COOKIE|WEBHOOK)$/i;
 
 /** A crontab env line's value: fully redacted for secret names, else redactLine. */
 export function redactEnv(name: string, value: string): string {

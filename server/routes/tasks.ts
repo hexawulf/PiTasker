@@ -348,7 +348,7 @@ router.post(
   "/api/import-cronjobs",
   isAuthenticated,
   wrap(async (req, res) => {
-    if (!Array.isArray(req.body)) return res.status(400).json({ message: "Invalid payload" });
+    if (!Array.isArray(req.body) || req.body.length > 500) return res.status(400).json({ message: "Invalid payload" });
     const existing = await storage.getAllTasks();
     const { doc } = await readCrontab();
     const inCrontab = new Set(listJobs(doc).filter((j) => !j.disabled).map((j) => j.command.trim()));
