@@ -3,6 +3,11 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [Unreleased]
+
+### Security
+- **CI & Dependabot**: Added `.github/workflows/ci.yml` (typecheck, unit + PostgreSQL tests, client/server/agent build, installer tests, shellcheck, theme token check, and Playwright E2E) with pinned action commit SHAs and `contents: read` permissions, plus weekly `.github/dependabot.yml` configuration (PT-A10).
+
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 
 ### Fixed
