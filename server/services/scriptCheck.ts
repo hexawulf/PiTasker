@@ -48,7 +48,7 @@ export function scriptOf(command: string, binDir = config.binDir): string | null
 
 function git(args: string[], cwd: string): Promise<{ ok: boolean; out: string }> {
   return new Promise((resolve) => {
-    execFile("git", args, { cwd, timeout: 5_000 }, (err, stdout) => resolve({ ok: !err, out: String(stdout) }));
+    execFile("git", ["--no-optional-locks", ...args], { cwd, timeout: 5_000 }, (err, stdout) => resolve({ ok: !err, out: String(stdout) }));
   });
 }
 
@@ -66,17 +66,19 @@ export async function checkCommand(command: string, binDir = config.binDir): Pro
     return { script, warnings };
   }
   const rel = path.relative(root, script);
-  const repo = await git(["rev-parse", "--is-inside-work-tree"], root);
+  const [repo, tracked, status] = await Promise.all([
+    git(["rev-parse", "--is-inside-work-tree"], root),
+    git(["ls-files", "--error-unmatch", "--", rel], root),
+    git(["status", "--porcelain", "--", rel], root),
+  ]);
   if (!repo.ok) {
     warnings.push({ code: "not-a-repo", message: `${binDir} is not a git repository: cannot check that the script is committed.` });
     return { script, warnings };
   }
-  const tracked = await git(["ls-files", "--error-unmatch", "--", rel], root);
   if (!tracked.ok) {
     warnings.push({ code: "untracked", message: `${rel} is not committed to bin.git. Commit it before the job goes live.` });
     return { script, warnings };
   }
-  const status = await git(["status", "--porcelain", "--", rel], root);
   if (status.ok && status.out.trim()) warnings.push({ code: "modified", message: `${rel} has uncommitted changes in bin.git.` });
   return { script, warnings };
 }

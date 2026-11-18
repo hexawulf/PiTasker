@@ -287,6 +287,15 @@ export default function FleetPage() {
   const rows = useMemo(() => (fleet.data ? buildRows(fleet.data) : []), [fleet.data]);
   const binHintHosts = useMemo(() => new Set((fleet.data?.hints ?? []).filter((h) => h.kind === "bin-differs").flatMap((h) => h.targets)), [fleet.data]);
   const shown = useMemo(() => applyFilters(rows, f, binHintHosts), [rows, f.host, f.source, f.hint, f.q, binHintHosts]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rowsByHost = useMemo(() => {
+    const m = new Map<string, Row[]>();
+    for (const r of shown) {
+      const list = m.get(r.hostId);
+      if (list) list.push(r);
+      else m.set(r.hostId, [r]);
+    }
+    return m;
+  }, [shown]);
   const counts = useMemo(() => {
     const c: Record<HintKind, number> = { "same-job": 0, "not-in-bin": 0, "bin-differs": binHintHosts.size, disabled: 0 };
     for (const r of rows) for (const k of new Set(r.hints.map((h) => h.kind))) if (k !== "bin-differs") c[k]++;
@@ -383,7 +392,7 @@ export default function FleetPage() {
           ) : (
             <div className="space-y-3">
               {fleet.data.hosts.map((h) => (
-                <HostSection key={h.id} host={h} rows={shown.filter((r) => r.hostId === h.id)} hubTz={hubTz} filtered={filtering} />
+                <HostSection key={h.id} host={h} rows={rowsByHost.get(h.id) ?? []} hubTz={hubTz} filtered={filtering} />
               ))}
             </div>
           )}

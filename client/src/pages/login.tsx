@@ -1,11 +1,23 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useLocation } from "wouter";
 import { ListTodo, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { login, useAuth } from "@/hooks/use-auth";
-import { signInWithGooglePopup } from "@/lib/firebase";
+
+// The Firebase SDK is split into its own chunk: only the login page needs it,
+// and only when Google sign-in is enabled. Prefetch as soon as firebaseEnabled
+// is known so clicking the button resolves immediately within user activation.
+type FirebaseModule = typeof import("@/lib/firebase");
+let firebaseModule: Promise<FirebaseModule> | null = null;
+function loadFirebase(): Promise<FirebaseModule> {
+  firebaseModule ??= import("@/lib/firebase").catch((err) => {
+    firebaseModule = null;
+    throw err;
+  });
+  return firebaseModule;
+}
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -43,11 +55,16 @@ export default function LoginPage() {
   const isBusy = busy || isFirebaseLoginPending || isGoogleSigningIn;
   const firebaseEnabled = firebase?.enabled === true;
 
+  useEffect(() => {
+    if (firebaseEnabled) void loadFirebase().catch(() => {});
+  }, [firebaseEnabled]);
+
   const handleGoogleLogin = async () => {
     if (!firebase?.enabled) return;
     setIsGoogleSigningIn(true);
     setError(null);
     try {
+      const { signInWithGooglePopup } = await loadFirebase();
       const idToken = await signInWithGooglePopup(firebase);
       await firebaseLogin(idToken);
       setLocation("/tasks");

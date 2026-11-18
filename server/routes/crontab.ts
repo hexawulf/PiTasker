@@ -7,7 +7,7 @@ import { listBackups, mutateCrontab, readBackup, readCrontab, type MutateOptions
 import { cronStates, doubleRuns, exportToCrontab, importFromCrontab, jobForTask } from "../crontab/sync";
 import { isAuthenticated } from "../middleware/authMiddleware";
 import { storage } from "../storage";
-import { invalidateCrontabCache } from "./tasks";
+import { cachedCrontab, invalidateCrontabCache } from "./tasks";
 
 const router = express.Router();
 router.use(isAuthenticated);
@@ -29,7 +29,7 @@ function writeOpts(req: Request): MutateOptions {
 router.get(
   "/",
   wrap(async (_req, res) => {
-    const { text, hash, doc } = await readCrontab();
+    const { text, hash, doc } = (await cachedCrontab()) ?? (await readCrontab());
     const tasks = await storage.getAllTasks();
     const jobs = new Map(listJobs(doc).map((j) => [j.index, j]));
     const taskFor = new Map<string, number>();
@@ -82,7 +82,7 @@ router.post(
 router.get(
   "/validate",
   wrap(async (_req, res) => {
-    const { doc } = await readCrontab();
+    const { doc } = (await cachedCrontab()) ?? (await readCrontab());
     const tasks = await storage.getAllTasks();
     const states = cronStates(doc, tasks);
     const discrepancies: { type: string; taskId?: number; details: string }[] = [];

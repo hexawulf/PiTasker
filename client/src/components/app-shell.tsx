@@ -1,20 +1,22 @@
-import { useEffect, type ComponentType } from "react";
+import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { FileText, Globe, Keyboard, ListChecks, ListTodo, LogOut, RefreshCw, SettingsIcon, TerminalSquare } from "lucide-react";
 import AboutModal from "@/components/about-modal";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useMeta } from "@/hooks/use-meta";
 import { useOpenShortcutHelp } from "@/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
 import TasksPage from "@/pages/tasks";
-import CrontabPage from "@/pages/crontab";
-import FleetPage from "@/pages/fleet";
-import LogsPage from "@/pages/logs";
-import SettingsPage from "@/pages/settings";
+
+const CrontabPage = lazy(() => import("@/pages/crontab"));
+const FleetPage = lazy(() => import("@/pages/fleet"));
+const LogsPage = lazy(() => import("@/pages/logs"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
 
 export const TABS: { id: string; label: string; icon: ComponentType<{ className?: string }>; component: ComponentType }[] = [
   { id: "tasks", label: "Tasks", icon: ListChecks, component: TasksPage },
@@ -112,7 +114,9 @@ export default function AppShell({ tab }: { tab: string }) {
             ))}
           </nav>
           <div className="pb-8">
-            <Page />
+            <Suspense fallback={<Skeleton className="h-64 w-full bg-pi-card" />}>
+              <Page />
+            </Suspense>
           </div>
         </div>
       </main>

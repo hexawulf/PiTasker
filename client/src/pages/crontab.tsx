@@ -85,8 +85,7 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
     try {
       const r = await api<ImportResult>("POST", "/api/crontab/import", { ids: [...chosen] });
       toast({ title: "Imported", description: `${r.imported} new, ${r.updated} updated. The crontab was not changed.` });
-      await qc.invalidateQueries({ queryKey: TASKS_KEY });
-      await qc.invalidateQueries({ queryKey: CRONTAB_KEY });
+      await Promise.all([qc.invalidateQueries({ queryKey: TASKS_KEY }), qc.invalidateQueries({ queryKey: CRONTAB_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/validate"] })]);
       onOpenChange(false);
       setPicked(null);
     } catch (e) {
@@ -169,7 +168,7 @@ function BackupsCard() {
     try {
       await write({ method: "POST", url: `/api/crontab/backups/${encodeURIComponent(name)}/restore`, title: `Restore ${name}`, confirmLabel: "Restore this crontab", destructive: true });
       toast({ title: "Crontab restored", description: `${name} (the replaced crontab was backed up too)` });
-      await Promise.all([qc.invalidateQueries({ queryKey: CRONTAB_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/backups"] }), qc.invalidateQueries({ queryKey: TASKS_KEY })]);
+      await Promise.all([qc.invalidateQueries({ queryKey: CRONTAB_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/validate"] }), qc.invalidateQueries({ queryKey: ["/api/crontab/backups"] }), qc.invalidateQueries({ queryKey: TASKS_KEY })]);
       setViewing(null);
     } catch (e) {
       if (!isCancelled(e)) toast({ title: "Restore failed", description: (e as Error).message, variant: "destructive" });
@@ -224,7 +223,7 @@ export default function CrontabPage() {
     try {
       const r = (await write({ method: "POST", url: "/api/crontab/export", title: "Write PiTasker's crontab tasks to the crontab", confirmLabel: "Write crontab" })) as { changed: boolean; exported?: number };
       toast({ title: r.changed ? "Crontab updated" : "Already in sync", description: r.changed ? `${r.exported ?? 0} line(s) written` : "Nothing to write." });
-      await Promise.all([qc.invalidateQueries({ queryKey: CRONTAB_KEY }), qc.invalidateQueries({ queryKey: TASKS_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/backups"] })]);
+      await Promise.all([qc.invalidateQueries({ queryKey: CRONTAB_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/validate"] }), qc.invalidateQueries({ queryKey: TASKS_KEY }), qc.invalidateQueries({ queryKey: ["/api/crontab/backups"] })]);
     } catch (e) {
       if (!isCancelled(e)) toast({ title: "Export failed", description: (e as Error).message, variant: "destructive" });
     }
