@@ -9,6 +9,13 @@ should not live in cron. Runs on piapps as the pm2 app `pitasker`
 
 ![PiTasker 2.0 — Tasks (light theme, demo crontab)](docs/screenshots/tasks.png)
 
+## What's new in 2.2 (2.2.0 – 2.2.3)
+
+- **Google Firebase Auth + break-glass fallback (2.2.0 – 2.2.2)**: Sign in with Google restricted to `FIREBASE_ALLOWED_EMAILS` with server-side `verifyIdToken(..., true)` revocation and `email_verified` checks, fail-closed service account validation, COOP popup compatibility, and local username/password retained as an offline break-glass fallback.
+- **Security hardening (2.2.3)**: Strict newline and C0 control-character rejection across cron schedules, task names, and commands; `sameOrigin` CSRF `Referer` fallback; bounded login and agent rate limiters (`10,000` keys with expired/LRU eviction + reset on login); symlink and leading-`-` rejection on `/api/pitasker-logs/file`; `installCsp` applied across all `/api` and static routes; expanded fleet secret redaction (CLI flags `--password`/`--token`/`--secret`/`--api-key`/`-u`, `ghp_`/`github_pat_`/`sk-`/`xox*` tokens, `CREDENTIAL`/`COOKIE`/`WEBHOOK` env vars); and **0 production `npm audit` vulnerabilities** (upgraded to Zod 4 `^4.6.7`, Vite `^8.3.8`, Vitest `^5.1.0`).
+- **Faster UI & backend I/O (2.2.3)**: Route-level code splitting (`React.lazy` for `Crontab`, `Fleet`, `Logs`, `Settings`, `Login`) and an on-demand Firebase Auth chunk (`-41%` main JS bundle); shared 3 s TTL + in-flight deduplicated crontab cache (`-65%` `/api/crontab` latency); `journalctl -o short-unix --grep` filtering + parallel log `stat` in `cronSeen.ts`; parallel `git` and `/etc/cron.*` collection.
+- **Slimmer footprint & CI (2.2.3)**: Replaced umbrella `firebase` with `@firebase/app` + `@firebase/auth` and removed `tailwindcss-animate` (`node_modules` cut by `-50%` from 288 MB to 145 MB); removed dead 1.x files and circular imports (`madge --circular` = 0); added GitHub Actions CI (`.github/workflows/ci.yml`) and Dependabot (`.github/dependabot.yml`).
+
 ## What's new in 2.0
 
 - **No more double runs**: 1.x ran every imported crontab job a second time
@@ -84,9 +91,9 @@ on the page edits or runs anything; piapps' own crontab links to the Crontab tab
 
 ## Stack
 
-React 18 + Vite + Tailwind (PiDeck 2.0 tokens) · Express 4 · PostgreSQL
-(drizzle-orm, migrations in `migrations/`) · node-cron · Node 22.
-Memory on piapps: about 115–120 MB RSS steady, ~220 MB briefly at start
+React 18 + Vite 8 + Tailwind (PiDeck 2.0 tokens) · Express 4 · PostgreSQL
+(drizzle-orm, migrations in `migrations/`) · Zod 4 · node-cron · Node 22.
+Memory on piapps: about 102–106 MB RSS steady, ~145 MB briefly at start
 (pm2 restarts it above 256 MB).
 
 ## Setup
