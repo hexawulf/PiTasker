@@ -3,7 +3,7 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [Unreleased]
+## [2.2.3] — 2026-11-18 (Security hardening, performance & codebase slimming)
 
 ### Added
 - **CI & Dependabot (`PT-A10`)**: Added GitHub Actions workflow (`.github/workflows/ci.yml`) running `check`, `check:theme`, `check:shell`, `test`, `test:install`, `build`, and `test:e2e` on Node 22 with PostgreSQL 16, and `.github/dependabot.yml` for weekly npm and GitHub Actions updates.

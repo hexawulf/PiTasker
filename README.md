@@ -5,7 +5,7 @@ user's crontab from a web UI, and let PiTasker itself run the jobs that
 should not live in cron. Runs on piapps as the pm2 app `pitasker`
 (<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
 
-**Current version: 2.2.0** — released 2026-10-04: Google Firebase authentication with email allowlist & break-glass fallback. 2.1.0 (2026-10-01) added the read-only **Fleet** view across piapps, piapps2, piapps3, piapps4 and hwca-ap02. 2.0.0 (2026-09-30) was the fix-and-refresh release: one runner per job, a crontab that stays exactly as you wrote it, a diff before every write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md).
+**Current version: 2.2.3** — released 2026-11-18: security hardening, route code-splitting & lazy Firebase chunk, backend I/O caching, dependency slimming, and Zod 4 upgrade. 2.2.0 (2026-10-04) added Google Firebase authentication with email allowlist & break-glass fallback. 2.1.0 (2026-10-01) added the read-only **Fleet** view across piapps, piapps2, piapps3, piapps4 and hwca-ap02. 2.0.0 (2026-09-30) was the fix-and-refresh release: one runner per job, a crontab that stays exactly as you wrote it, a diff before every write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md).
 
 ![PiTasker 2.0 — Tasks (light theme, demo crontab)](docs/screenshots/tasks.png)
 

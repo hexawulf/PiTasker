@@ -9,7 +9,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { toast } from "@/hooks/use-toast";
 import { diagnosticsLine } from "@/lib/diagnostics";
 
-const RELEASE_DATE = "October 2026";
+const RELEASE_DATE = "November 2026";
 const REPO = "https://github.com/hexawulf/PiTasker";
 
 function Diagnostics() {
@@ -87,7 +87,7 @@ export default function AboutModal() {
               <li>Routing: Wouter (deep-linkable tabs)</li>
               <li>Database: PostgreSQL + Drizzle ORM (migrations)</li>
               <li>Fleet: read-only PiTasker agents (bearer token, LAN / WireGuard, no sudo)</li>
-              <li>Auth: Session-based authentication, helmet + CSP</li>
+              <li>Auth: Google Firebase Auth + break-glass password, session cookie, helmet + CSP</li>
             </ul>
           </div>
           <div>
