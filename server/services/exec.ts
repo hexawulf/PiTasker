@@ -155,6 +155,8 @@ export function execCommand(command: string, opts: ExecOptions): Promise<ExecRes
       done = true;
       clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
+      child.stdout?.destroy();
+      child.stderr?.destroy();
       if (spawnError) err.push(`${spawnError.message}\n`);
       resolve({
         status: timedOut ? "timeout" : code === 0 ? "success" : "failed",

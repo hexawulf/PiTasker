@@ -35,6 +35,9 @@ export function createApp(opts: AppOptions = {}): Express {
   // nginx (and Cloudflare in front of it) terminate TLS: trust one proxy hop.
   app.set("trust proxy", 1);
   installSecurityHeaders(app);
+  if (opts.staticDir) {
+    installCsp(app, opts.staticDir);
+  }
 
   app.use(express.json({ limit: "100kb" }));
   app.use(
@@ -68,7 +71,6 @@ export function createApp(opts: AppOptions = {}): Express {
   app.use("/api", (_req, res) => res.status(404).json({ message: "Not found" }));
 
   if (opts.staticDir) {
-    installCsp(app, opts.staticDir);
     app.use(express.static(opts.staticDir, { index: false, maxAge: "1h", setHeaders: (res, file) => {
       if (/\/assets\//.test(file)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     } }));

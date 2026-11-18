@@ -34,6 +34,13 @@ describe("redactLine: secrets are replaced", () => {
     // URL credentials
     ["postgres://pideck:CHANGE_ME@localhost:5432/pideck", `postgres://pideck:${R}@localhost:5432/pideck`],
     ["fetching https://user:p4ss@example.org/repo.git", `fetching https://user:${R}@example.org/repo.git`],
+    // CLI flags & standalone token prefixes
+    ["mytool --password supersecret --host localhost", `mytool --password ${R} --host localhost`],
+    ["cli --api-key 'sk-12345' run", `cli --api-key '${R}' run`],
+    ["curl -u admin:hunter2 https://example.org", `curl -u admin:${R} https://example.org`],
+    ["echo ghp_0123456789abcdefghij0123456789abcdef", `echo ${R}`],
+    ["echo sk-ant-api03-0123456789abcdefghij012345", `echo ${R}`],
+    ["SLACK_WEBHOOK=https://hooks.slack.com/services/T1/B2/X3 notify", `SLACK_WEBHOOK=${R} notify`],
   ])("%s", (input, expected) => {
     expect(redactLine(input).text).toBe(expected);
   });
@@ -51,13 +58,13 @@ describe("redactLine: secrets are replaced", () => {
 
 describe("redactLine: false positives stay untouched", () => {
   it.each([
-    "Sep 29 08:12:01 piapps2 sshd[123]: Failed password for invalid user admin from 1.2.3.4 port 22",
-    "Sep 29 08:12:01 piapps2 sshd[123]: Accepted publickey for zk from 192.168.50.102",
+    "Sep 29 08:12:01 alpha sshd[123]: Failed password for invalid user admin from 1.2.3.4 port 22",
+    "Sep 29 08:12:01 alpha sshd[123]: Accepted publickey for user from 198.51.100.10",
     "pam_unix(sshd:auth): authentication failure; logname= uid=0",
     "openai usage: max_tokens=512 prompt_tokens: 12 completion_tokens: 30",
     "token_count: 3, tokens=7",
     "tokenizer=bert-base loaded",
-    "password changed for user zk",
+    "password changed for user admin",
     "secret: false",
     "require_password=true",
     "api_key: null",
@@ -67,8 +74,8 @@ describe("redactLine: false positives stay untouched", () => {
     "The bearer of this letter",
     "Bearer ok", // too short to be a token
     "http://example.org:8080/path?q=1",
-    "ssh zk@192.168.50.120",
-    "email zk@hexawulf.dev sent",
+    "ssh user@198.51.100.20",
+    "email ops@example.org sent",
     "[sonarr] Info: Series refresh complete (token bucket: 5/10)",
     "2026-09-29T08:12:01Z INFO radarr: Import complete, keys=3",
   ])("%s", (line) => {
@@ -89,9 +96,9 @@ describe("crontab additions", () => {
 
   it.each([
     "PATH=/home/zk/bin:/usr/bin /home/zk/bin/x",
-    "MAILTO=zk@hexawulf.dev",
+    "MAILTO=ops@example.org",
     "LOG_KEYS=3 /home/zk/bin/x", // name doesn't END in a secret word
-    "*/5 * * * * /home/zk/bin/linuxsvr-status-poll >> /home/zk/logs/x.log 2>&1",
+    "*/5 * * * * /home/zk/bin/status-poll >> /home/zk/logs/x.log 2>&1",
     "0 3 * * * /home/zk/bin/report --date \"$(date +\\%F)\"",
     "RESTIC_PASSWORD_FILE=/home/zk/.config/restic/pw restic backup",
   ])("untouched: %s", (line) => expect(redactLine(line).text).toBe(line));
@@ -100,6 +107,9 @@ describe("crontab additions", () => {
     expect(redactEnv("HC_TOKEN", "abc")).toBe(R);
     expect(redactEnv("DB_PASSWORD", '"p w"')).toBe(R);
     expect(redactEnv("WEBHOOK_AUTH", "s3cr3t")).toBe(R);
+    expect(redactEnv("SLACK_WEBHOOK", "https://hooks.slack.com/services/T/B/X")).toBe(R);
+    expect(redactEnv("SESSION_COOKIE", "sid=123")).toBe(R);
+    expect(redactEnv("API_CREDENTIAL", "cred123")).toBe(R);
     expect(redactEnv("API_KEY", "")).toBe("");
     expect(redactEnv("PATH", "/usr/bin:/bin")).toBe("/usr/bin:/bin");
     expect(redactEnv("MAILTO", '""')).toBe('""');

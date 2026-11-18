@@ -21,10 +21,14 @@ router.post("/api/auth/login", loginLimiter, async (req: Request, res: Response)
   if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
     return res.status(400).json({ message: "Username and password are required." });
   }
+  if (username.length > 256 || password.length > 1024) {
+    return res.status(400).json({ message: "Invalid username or password." });
+  }
   try {
     const user = await storage.getUserByUsername(username);
     const ok = await comparePassword(password, user?.password ?? DUMMY_HASH);
     if (!user || !ok) return res.status(401).json({ message: "Invalid username or password." });
+    loginLimiter.resetKey(req);
     // New session id on login (no fixation).
     req.session.regenerate((err) => {
       if (err) return res.status(500).json({ message: "Could not start a session." });
@@ -32,7 +36,10 @@ router.post("/api/auth/login", loginLimiter, async (req: Request, res: Response)
       s.userId = user.id;
       s.user = { id: user.id, username: user.username };
       s.authMethod = "password";
-      req.session.save(() => res.json({ message: "Login successful.", user: { id: user.id, username: user.username } }));
+      req.session.save((saveErr) => {
+        if (saveErr) return res.status(500).json({ message: "Could not save session." });
+        res.json({ message: "Login successful.", user: { id: user.id, username: user.username } });
+      });
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -42,7 +49,7 @@ router.post("/api/auth/login", loginLimiter, async (req: Request, res: Response)
 
 router.post("/api/auth/firebase-login", loginLimiter, async (req: Request, res: Response) => {
   try {
-    const { idToken } = z.object({ idToken: z.string().min(1) }).parse(req.body);
+    const { idToken } = z.object({ idToken: z.string().min(1).max(16_384) }).parse(req.body);
     const identity = await verifyFirebaseLogin(idToken);
 
     let user = await storage.getUserByUsername(identity.email);
@@ -56,6 +63,7 @@ router.post("/api/auth/firebase-login", loginLimiter, async (req: Request, res: 
       return res.status(500).json({ message: "No local user found to bind session." });
     }
 
+    loginLimiter.resetKey(req);
     req.session.regenerate((err) => {
       if (err) {
         console.error("Session regenerate error:", err);
@@ -79,19 +87,20 @@ router.post("/api/auth/firebase-login", loginLimiter, async (req: Request, res: 
         });
       });
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Invalid input: idToken is required." });
     }
-    const status = typeof error?.status === "number" ? error.status : 401;
-    return res.status(status).json({ message: error?.message || "Firebase login failed." });
+    const err = error as { status?: number; message?: string };
+    const status = typeof err?.status === "number" ? err.status : 401;
+    return res.status(status).json({ message: err?.message || "Firebase login failed." });
   }
 });
 
 router.post("/api/auth/logout", isAuthenticated, (req: Request, res: Response) => {
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ message: "Could not log out, please try again." });
-    res.clearCookie("pitasker.sid");
+    res.clearCookie("pitasker.sid", { httpOnly: true, secure: true, sameSite: "lax", path: "/" });
     return res.json({ message: "Logout successful." });
   });
 });
@@ -113,6 +122,9 @@ router.post("/api/auth/change-password", isAuthenticated, loginLimiter, async (r
   const u = sessionUser(req)!;
   if (typeof currentPassword !== "string" || typeof newPassword !== "string" || typeof confirmNewPassword !== "string") {
     return res.status(400).json({ message: "All password fields are required." });
+  }
+  if (currentPassword.length > 1024 || newPassword.length > 1024 || confirmNewPassword.length > 1024) {
+    return res.status(400).json({ message: "Password input is too long." });
   }
   if (newPassword !== confirmNewPassword) return res.status(400).json({ message: "New passwords do not match." });
   try {

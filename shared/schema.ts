@@ -84,11 +84,18 @@ export const commandSchema = z
   .trim()
   .min(1, "Command is required")
   .max(1000, "Command must be at most 1000 characters")
-  .refine((v) => !/[\r\n]/.test(v), "Command must be a single line");
+  .refine((v) => !/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v), "Command must be a single line without control characters");
+
+export const taskNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Task name is required")
+  .max(100, "Task name must be less than 100 characters")
+  .refine((v) => !/[\r\n\x00-\x1f\x7f]/.test(v), "Task name must not contain control characters");
 
 export const taskInputSchema = z
   .object({
-    name: z.string().trim().min(1, "Task name is required").max(100, "Task name must be less than 100 characters"),
+    name: taskNameSchema,
     cronSchedule: cronScheduleSchema,
     command: commandSchema,
     /** true = the crontab runs it (default), false = PiTasker runs it. */
@@ -102,7 +109,7 @@ export const taskInputSchema = z
 
 export const taskPatchSchema = z
   .object({
-    name: z.string().trim().min(1).max(100),
+    name: taskNameSchema,
     cronSchedule: cronScheduleSchema,
     command: commandSchema,
   })

@@ -3,7 +3,6 @@ import {
   initializeApp,
   getApps,
   cert,
-  applicationDefault,
   type App,
   type Credential,
 } from "firebase-admin/app";
@@ -23,7 +22,13 @@ export interface VerifiedFirebaseUser {
   name?: string;
 }
 
+export type VerifyIdTokenFn = (idToken: string, checkRevoked: boolean) => Promise<DecodedIdToken>;
+
 let firebaseAdminApp: App | null = null;
+
+export function resetFirebaseAdminForTests(): void {
+  firebaseAdminApp = null;
+}
 
 export function isFirebaseEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const val = (env.FIREBASE_ENABLED || "").trim().toLowerCase();
@@ -57,13 +62,7 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
     return firebaseAdminApp;
   }
 
-  const existingApps = getApps();
-  if (existingApps && existingApps.length > 0 && existingApps[0]) {
-    firebaseAdminApp = existingApps[0];
-    return firebaseAdminApp;
-  }
-
-  let credential: Credential | undefined;
+  let credential: Credential;
   let projectId = (env.FIREBASE_PROJECT_ID || "").trim() || undefined;
 
   const keyPath = (env.FIREBASE_SERVICE_ACCOUNT_PATH || "").trim();
@@ -93,8 +92,13 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
       throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT_JSON");
     }
   } else {
-    // Fall back to Google Application Default Credentials
-    credential = applicationDefault();
+    throw new Error("Firebase service account is not configured (set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON)");
+  }
+
+  const existingApps = getApps();
+  if (existingApps && existingApps.length > 0 && existingApps[0]) {
+    firebaseAdminApp = existingApps[0];
+    return firebaseAdminApp;
   }
 
   firebaseAdminApp = initializeApp({
@@ -108,41 +112,49 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
 export async function verifyFirebaseLogin(
   idToken: string,
   env: NodeJS.ProcessEnv = process.env,
+  verifyTokenImpl?: VerifyIdTokenFn,
 ): Promise<VerifiedFirebaseUser> {
   if (!isFirebaseEnabled(env)) {
-    const err: any = new Error("Firebase authentication is disabled on this host.");
+    const err: Error & { status?: number } = new Error("Firebase authentication is disabled on this host.");
     err.status = 503;
     throw err;
   }
 
-  if (!idToken || typeof idToken !== "string" || !idToken.trim()) {
-    const err: any = new Error("Missing or invalid ID token.");
+  if (!idToken || typeof idToken !== "string" || !idToken.trim() || idToken.length > 16_384) {
+    const err: Error & { status?: number } = new Error("Missing or invalid ID token.");
     err.status = 400;
     throw err;
   }
 
-  let app: App;
-  try {
-    app = getFirebaseAdminApp(env);
-  } catch (e: any) {
-    const err: any = new Error("Firebase Admin is not configured properly on the server.");
-    err.status = 500;
-    throw err;
+  let verifyFn: VerifyIdTokenFn;
+  if (verifyTokenImpl) {
+    verifyFn = verifyTokenImpl;
+  } else {
+    let app: App;
+    try {
+      app = getFirebaseAdminApp(env);
+    } catch {
+      const err: Error & { status?: number } = new Error("Firebase Admin is not configured properly on the server.");
+      err.status = 500;
+      throw err;
+    }
+    verifyFn = (token, checkRevoked) => getAuth(app).verifyIdToken(token, checkRevoked);
   }
 
   let decoded: DecodedIdToken;
   try {
-    decoded = await getAuth(app).verifyIdToken(idToken.trim());
-  } catch (e: any) {
-    console.warn("[Firebase] Failed to verify ID token:", e?.message || e);
-    const err: any = new Error("Invalid or expired Firebase ID token.");
+    decoded = await verifyFn(idToken.trim(), true);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[Firebase] Failed to verify ID token:", msg);
+    const err: Error & { status?: number } = new Error("Invalid or expired Firebase ID token.");
     err.status = 401;
     throw err;
   }
 
   const email = (decoded.email || "").trim().toLowerCase();
-  if (!email || !decoded.email_verified) {
-    const err: any = new Error("Google account email is missing or not verified.");
+  if (!email || decoded.email_verified !== true) {
+    const err: Error & { status?: number } = new Error("Google account email is missing or not verified.");
     err.status = 403;
     throw err;
   }
@@ -150,14 +162,14 @@ export async function verifyFirebaseLogin(
   const allowedEmails = getFirebaseAllowedEmails(env);
   if (allowedEmails.length === 0) {
     console.error("[Firebase] No allowed emails configured in FIREBASE_ALLOWED_EMAILS.");
-    const err: any = new Error("No authorized accounts configured on this host.");
+    const err: Error & { status?: number } = new Error("No authorized accounts configured on this host.");
     err.status = 403;
     throw err;
   }
 
   if (!allowedEmails.includes(email)) {
     console.warn("[Firebase Auth] Access denied: Account " + email + " is not in FIREBASE_ALLOWED_EMAILS.");
-    const err: any = new Error("Account " + email + " is not authorized to access PiTasker.");
+    const err: Error & { status?: number } = new Error("Account " + email + " is not authorized to access PiTasker.");
     err.status = 403;
     throw err;
   }

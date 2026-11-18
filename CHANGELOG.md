@@ -5,8 +5,18 @@ All notable changes to PiTasker. Versions follow semver per phase
 
 ## [Unreleased]
 
+### Added
+- **CI & Dependabot (`PT-A10`)**: Added GitHub Actions workflow (`.github/workflows/ci.yml`) running `check`, `check:theme`, `check:shell`, `test`, `test:install`, `build`, and `test:e2e` on Node 22 with PostgreSQL 16, and `.github/dependabot.yml` for weekly npm and GitHub Actions updates.
+
+### Changed
+- **Performance (`PT-A16`–`PT-A21`)**: Lazy-loaded secondary routes (`CrontabPage`, `FleetPage`, `LogsPage`, `SettingsPage`, `LoginPage`) via `React.lazy` and dynamically imported the Firebase Auth SDK chunk only when `firebaseEnabled` is active; shared a 3s TTL + in-flight deduplicated `cachedCrontab()` across `/api/tasks`, `/api/crontab`, and `/api/crontab/validate`; narrowed `cronSeen.ts` `journalctl` query to `-o short-unix --grep` with parallel log `stat`; parallelized `collector.ts`, `scriptCheck.ts`, and `sync.ts` I/O; cached `Intl` formatters and gated `/api/auth/config` on unauthenticated sessions.
+- **Dependencies & slimming (`PT-A10`, `PT-A22`–`PT-A26`)**: Replaced the umbrella `firebase` package with `@firebase/app` + `@firebase/auth`, removed unused `@tailwindcss/typography` and `tailwindcss-animate`, deleted dead `client/src/lib/notify.ts`, `server/services/notificationService.ts`, and `docs/archive/verify-crontab-integration.sh`, removed unused storage methods, Radix re-exports, and 1.x CSS classes, broke the `shared/fleet.ts` ↔ `shared/fleet-view.ts` circular import, and losslessly palettized `docs/screenshots/tasks.png`.
+
 ### Security
-- **CI & Dependabot**: Added `.github/workflows/ci.yml` (typecheck, unit + PostgreSQL tests, client/server/agent build, installer tests, shellcheck, theme token check, and Playwright E2E) with pinned action commit SHAs and `contents: read` permissions, plus weekly `.github/dependabot.yml` configuration (PT-A10).
+- **Authentication & session hardening (`PT-A01`, `PT-A02`, `PT-A06`)**: Enforced `checkRevoked: true` and `email_verified === true` in Firebase `verifyIdToken()`, failed closed when `FIREBASE_ENABLED=true` and service account credentials are missing, bounded the login rate-limiter Map (`10,000` keys with expired/LRU eviction) and reset caller count on successful login, bounded auth input lengths, checked `req.session.save` errors, and matched cookie attributes on `res.clearCookie`.
+- **CSRF, CSP, input validation & log route hardening (`PT-A03`, `PT-A05`, `PT-A07`, `PT-A08`, `PT-A11`–`PT-A14`)**: Checked `Referer` in `sameOrigin` when `Origin` is absent; mounted `installCsp` before `/api/*` routes; rejected embedded `\r`/`\n` and C0 control characters in `parseCron`, task names, and commands; rejected symlinks and leading-`-` filenames in `/api/pitasker-logs/file`; delegated unexpected 500 errors in `/api/crontab` to `next(e)`; destroyed child stdout/stderr streams on post-exit timeout; bounded agent failure rate-limiter Map with LRU eviction.
+- **Fleet redaction (`PT-A09`)**: Expanded `server/fleet/redact.ts` to redact space-separated CLI secret flags (`--password`, `--token`, `--secret`, `--api-key`, `-u user:pass`), common API token prefixes (`ghp_`, `github_pat_`, `sk-`, `xox[baprs]-`), and `CREDENTIAL`/`COOKIE`/`WEBHOOK` environment variables.
+- **Dependency advisories (`PT-A04`, `PT-A10`)**: Upgraded `zod` to `^4.6.7` (`GHSA-mrhx-c7xc-m3w5`), `vite` to `^8.3.8`, `vitest` to `^5.1.0`, and pinned patched transitive versions via `overrides` (`npm audit --omit=dev` → 0 vulnerabilities).
 
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 

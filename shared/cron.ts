@@ -82,6 +82,9 @@ export function parseField(src: string, spec: FieldSpec): ParsedField | string {
 }
 
 export function parseCron(expr: string): ParsedCron {
+  if (/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(expr)) {
+    return { ok: false, error: "The schedule must be a single line without control characters" };
+  }
   const e = expr.trim();
   if (e === "") return { ok: false, error: "The schedule is empty" };
   if (e.startsWith("@")) {
@@ -92,7 +95,7 @@ export function parseCron(expr: string): ParsedCron {
     const inner = parseCron(five);
     return inner.ok ? { ...inner, macro: key, expr: e } : inner;
   }
-  const parts = e.split(/\s+/);
+  const parts = e.split(/[ \t]+/);
   if (parts.length !== 5) return { ok: false, error: `Expected 5 fields (minute hour day month weekday), got ${parts.length}` };
   const fields: ParsedField[] = [];
   for (let i = 0; i < 5; i++) {
@@ -109,9 +112,10 @@ export function isValidCron(expr: string): boolean {
 
 /** The five-field form node-cron understands (macros expanded); null for @reboot/invalid. */
 export function toFiveFields(expr: string): string | null {
+  if (/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(expr)) return null;
   const e = expr.trim();
   if (e.startsWith("@")) return MACROS[e.toLowerCase()] ?? null;
-  return isValidCron(e) ? e.split(/\s+/).join(" ") : null;
+  return isValidCron(e) ? e.split(/[ \t]+/).join(" ") : null;
 }
 
 // ─── Time zones (Intl) ─────────────────────────────────────────────────────

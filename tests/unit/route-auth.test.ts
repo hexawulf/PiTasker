@@ -1,6 +1,10 @@
 // Walks every route the app registers and calls it without a session: each
 // /api route must answer 401, except the short PUBLIC list. A new route that
-// forgets isAuthenticated fails this test.
+// forgets isAuthenticated fails this test. Also verifies sameOrigin CSRF
+// checks across every state-changing /api route.
+import fs from "fs";
+import os from "os";
+import path from "path";
 import type { AddressInfo } from "net";
 import type { Server } from "http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +15,8 @@ const PUBLIC = new Set([
   "POST /api/auth/firebase-login",
   "GET /api/auth/config",
 ]);
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 type Layer = {
   route?: { path: string; methods: Record<string, boolean> };
@@ -65,8 +71,8 @@ describe("every /api route requires a login", () => {
     const open: string[] = [];
     for (const r of routes) {
       if (PUBLIC.has(r)) continue;
-      const [method, path] = r.split(" ");
-      const url = base + path.replace(/:[^/]+/g, "1");
+      const [method, routePath] = r.split(" ");
+      const url = base + routePath.replace(/:[^/]+/g, "1");
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", "X-Forwarded-Proto": "https" },
@@ -96,19 +102,44 @@ describe("every /api route requires a login", () => {
 });
 
 describe("request guards", () => {
-  it("refuses a state-changing request that is not JSON (CSRF)", async () => {
-    const res = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "username=a&password=b" });
-    expect(res.status).toBe(415);
-  });
+  it("enforces sameOrigin (JSON Content-Type, Origin, Referer, Sec-Fetch-Site) on EVERY state-changing /api route", async () => {
+    const mutating = routes.filter((r) => !SAFE_METHODS.has(r.split(" ")[0]));
+    expect(mutating.length).toBeGreaterThanOrEqual(13);
 
-  it("refuses a cross-site request", async () => {
-    const res = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" }, body: "{}" });
-    expect(res.status).toBe(403);
-  });
+    const failures: string[] = [];
+    for (const r of mutating) {
+      const [method, routePath] = r.split(" ");
+      const url = base + routePath.replace(/:[^/]+/g, "1");
 
-  it("refuses a foreign Origin", async () => {
-    const res = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body: "{}" });
-    expect(res.status).toBe(403);
+      const formRes = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "a=b",
+      });
+      if (formRes.status !== 415) failures.push(`${r} (form) → ${formRes.status}`);
+
+      const crossSiteRes = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" },
+        body: "{}",
+      });
+      if (crossSiteRes.status !== 403) failures.push(`${r} (sec-fetch-site) → ${crossSiteRes.status}`);
+
+      const foreignOriginRes = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Origin: "https://evil.example" },
+        body: "{}",
+      });
+      if (foreignOriginRes.status !== 403) failures.push(`${r} (foreign Origin) → ${foreignOriginRes.status}`);
+
+      const foreignRefererRes = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Referer: "https://evil.example/csrf" },
+        body: "{}",
+      });
+      if (foreignRefererRes.status !== 403) failures.push(`${r} (foreign Referer) → ${foreignRefererRes.status}`);
+    }
+    expect(failures).toEqual([]);
   });
 
   it("the fleet view is read-only: every /api/fleet route is a GET", () => {
@@ -127,11 +158,26 @@ describe("request guards", () => {
     expect(Object.keys(await res.json()).sort()).toEqual(["status", "uptime"]);
   });
 
-  it("sends security headers", async () => {
-    const res = await fetch(`${base}/health`);
-    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
-    expect(res.headers.get("x-powered-by")).toBeNull();
+  it("sends security headers and attaches CSP to /api and /health when staticDir is present", async () => {
+    const tmpStatic = fs.mkdtempSync(path.join(os.tmpdir(), "pitasker-csp-test-"));
+    fs.writeFileSync(path.join(tmpStatic, "index.html"), "<!doctype html><script>window.__x=1;</script>");
+    const cspApp = createApp({ sessionSecret: "route-auth-csp-secret-0123456789", staticDir: tmpStatic });
+    const cspServer = cspApp.listen(0);
+    const cspBase = `http://127.0.0.1:${(cspServer.address() as AddressInfo).port}`;
+    try {
+      const res = await fetch(`${cspBase}/api/auth/config`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+      expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+      expect(res.headers.get("cross-origin-opener-policy")).toBeNull();
+      expect(res.headers.get("x-powered-by")).toBeNull();
+      const csp = res.headers.get("content-security-policy-report-only") || res.headers.get("content-security-policy") || "";
+      expect(csp).toContain("frame-ancestors 'none'");
+    } finally {
+      cspServer.close();
+      fs.rmSync(tmpStatic, { recursive: true, force: true });
+    }
   });
 });
 

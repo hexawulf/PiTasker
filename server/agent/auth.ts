@@ -28,12 +28,22 @@ export function bearerToken(header: string | undefined): string | null {
  * request from that address *without the right token* gets 429 until the
  * window ends. A correct token always gets through and clears the count.
  */
-export function createFailureLimiter({ max = 10, windowMs = 10 * 60 * 1000, now = Date.now } = {}) {
+export function createFailureLimiter({ max = 10, windowMs = 10 * 60 * 1000, maxKeys = 10_000, now = Date.now } = {}) {
   const failures = new Map<string, { count: number; reset: number }>();
+  const evictExpired = (t: number) => {
+    for (const [k, e] of failures) if (t > e.reset) failures.delete(k);
+  };
   const entry = (key: string) => {
     const t = now();
     let e = failures.get(key);
     if (!e || t > e.reset) {
+      if (!failures.has(key) && failures.size >= maxKeys) {
+        evictExpired(t);
+        if (failures.size >= maxKeys) {
+          const oldest = failures.keys().next().value;
+          if (oldest !== undefined) failures.delete(oldest);
+        }
+      }
       e = { count: 0, reset: t + windowMs };
       failures.set(key, e);
     }
@@ -46,7 +56,6 @@ export function createFailureLimiter({ max = 10, windowMs = 10 * 60 * 1000, now 
     },
     fail: (key: string) => {
       entry(key).count += 1;
-      if (failures.size > 10_000) failures.clear(); // bounded memory under a spray
     },
     reset: (key: string) => {
       failures.delete(key);

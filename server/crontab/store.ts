@@ -72,6 +72,9 @@ export function writeCrontabText(text: string): Promise<void> {
     let stderr = "";
     const timer = setTimeout(() => child.kill("SIGKILL"), 15_000);
     child.stderr.on("data", (d) => (stderr += d));
+    child.stdin.on("error", () => {
+      /* handled via close exit code */
+    });
     child.on("error", (e) => {
       clearTimeout(timer);
       reject(e);

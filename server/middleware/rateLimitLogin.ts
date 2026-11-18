@@ -7,6 +7,7 @@ import { config } from "../config";
 // the header is client-controlled and ignored.
 const WINDOW_MS = 10 * 60 * 1000;
 export const MAX_ATTEMPTS = 10;
+export const MAX_BUCKET_SIZE = 10_000;
 
 type Entry = { count: number; reset: number };
 
@@ -19,12 +20,12 @@ export function clientKey(req: Pick<Request, "headers" | "ip">, trustCloudflare 
   return req.ip || "unknown";
 }
 
-export function createRateLimiter(max = MAX_ATTEMPTS, windowMs = WINDOW_MS) {
+export function createRateLimiter(max = MAX_ATTEMPTS, windowMs = WINDOW_MS, maxKeys = MAX_BUCKET_SIZE) {
   const bucket = new Map<string, Entry>();
-  const sweep = setInterval(() => {
-    const now = Date.now();
+  const evictExpired = (now: number) => {
     for (const [k, e] of bucket) if (now > e.reset) bucket.delete(k);
-  }, 60_000);
+  };
+  const sweep = setInterval(() => evictExpired(Date.now()), 60_000);
   sweep.unref();
   const limiter = (req: Request, res: Response, next: NextFunction) => {
     const key = clientKey(req);
@@ -35,6 +36,13 @@ export function createRateLimiter(max = MAX_ATTEMPTS, windowMs = WINDOW_MS) {
       e.reset = now + windowMs;
     }
     e.count += 1;
+    if (!bucket.has(key) && bucket.size >= maxKeys) {
+      evictExpired(now);
+      if (bucket.size >= maxKeys) {
+        const oldest = bucket.keys().next().value;
+        if (oldest !== undefined) bucket.delete(oldest);
+      }
+    }
     bucket.set(key, e);
     if (e.count > max) {
       res.setHeader("Retry-After", Math.ceil((e.reset - now) / 1000).toString());
@@ -42,5 +50,9 @@ export function createRateLimiter(max = MAX_ATTEMPTS, windowMs = WINDOW_MS) {
     }
     return next();
   };
-  return Object.assign(limiter, { reset: () => bucket.clear() });
+  return Object.assign(limiter, {
+    reset: () => bucket.clear(),
+    resetKey: (req: Pick<Request, "headers" | "ip">) => bucket.delete(clientKey(req)),
+    size: () => bucket.size,
+  });
 }
