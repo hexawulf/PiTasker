@@ -158,4 +158,4 @@ export type Hint = {
 
 export type FleetResponse = { generatedAt: string; binMaster: string | null; hosts: FleetHost[]; hints: Hint[] };
 
-export { entryKey, sourceGroup, sourceLabel, timerKey, type SourceGroup } from "./fleet-view";
+export { entryKey, timerKey } from "./fleet-view";

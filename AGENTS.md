@@ -34,7 +34,8 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
   `taskScheduler.sync()`/`unschedule()`; keep the order in
   `server/routes/tasks.ts` (header comment) so a failed crontab write
   never leaves a task running twice or not at all.
-- **Every `/api` route needs `isAuthenticated`** except `POST /api/auth/login`;
+- **Every `/api` route needs `isAuthenticated`** except `POST /api/auth/login`,
+  `POST /api/auth/firebase`, and `GET /api/auth/config`;
   `tests/unit/route-auth.test.ts` fails otherwise. State-changing requests
   are JSON (`sameOrigin`).
 - **The fleet view is read-only (P3).** The agent (`server/agent/`) has
@@ -49,10 +50,11 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
 - Jobs run with `jobEnv()` — never pass `process.env` (secrets) to them.
 - Schema changes: edit `shared/schema.ts`, `npm run db:generate`, commit
   the SQL + snapshot; never edit an applied migration.
-- UI: PiDeck 2.0 design language — tokens in `client/src/index.css`,
-  primitives in `components/ui`, `ConfirmDialog` for anything destructive,
-  the diff dialog (`useCrontabWrite`) for anything that writes the crontab.
-  Keep 390 px free of horizontal scroll and axe clean (E2E checks both).
+- UI: PiDeck 2.0 design language — tokens in `client/src/themes/pitasker-theme.css`
+  (imported by `client/src/index.css`), primitives in `components/ui`,
+  `ConfirmDialog` for anything destructive, the diff dialog (`useCrontabWrite`)
+  for anything that writes the crontab. Keep 390 px free of horizontal scroll
+  and axe clean (E2E checks both).
 - Commit messages: conventional (`fix(scope): …`), say why. Don't bump the
   version, tag or deploy unless asked; releases are done from the CLI.
 

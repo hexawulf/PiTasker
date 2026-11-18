@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHostTimeZone } from "@/hooks/use-meta";
 import { TASKS_KEY, useTasks } from "@/hooks/use-tasks";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useShortcutAction } from "@/shortcuts/use-shortcuts";
 import { api, ApiError } from "@/lib/api";
 import { formatDuration, formatRunTime, relativeTime } from "@/lib/format";
@@ -41,7 +41,7 @@ function matchesStatus(t: TaskView, f: StatusFilter): boolean {
   }
 }
 
-function LastRun({ task, tz }: { task: TaskView; tz: string }) {
+function LastRun({ task }: { task: TaskView }) {
   const r = task.lastRunInfo;
   const own = r && (
     <span className="flex flex-wrap items-center gap-1.5">
@@ -108,7 +108,7 @@ function TaskCard({
       <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         <div>
           <div className="text-xs uppercase tracking-wide text-pi-text-muted">Last run</div>
-          <LastRun task={task} tz={tz} />
+          <LastRun task={task} />
         </div>
         <div>
           <div className="text-xs uppercase tracking-wide text-pi-text-muted">Next runs</div>
@@ -152,7 +152,6 @@ export default function TasksPage() {
   const tz = useHostTimeZone();
   const write = useCrontabWrite();
   const qc = useQueryClient();
-  const { toast } = useToast();
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [runner, setRunner] = useState<RunnerFilter>("all");

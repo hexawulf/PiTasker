@@ -1,16 +1,16 @@
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { initializeApp, getApps, type FirebaseApp } from "@firebase/app";
 import {
   getAuth,
   signInWithPopup,
   GoogleAuthProvider,
   type Auth,
-} from "firebase/auth";
+} from "@firebase/auth";
 import type { FirebaseClientConfig } from "@/hooks/use-auth";
 
 let appInstance: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 
-export function getClientFirebaseAuth(config: FirebaseClientConfig): Auth {
+function getClientFirebaseAuth(config: FirebaseClientConfig): Auth {
   if (authInstance) return authInstance;
 
   const existingApps = getApps();

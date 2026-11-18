@@ -6,7 +6,6 @@ import { config } from "../config";
 import { storage } from "../storage";
 import { readCrontab } from "../crontab/store";
 import { crontabEnvVars, execCommand, type ExecResult } from "./exec";
-import { NotificationService } from "./notificationService";
 
 export class AlreadyRunningError extends Error {
   status = 409;
@@ -26,9 +25,14 @@ export function summarizeOutput(r: Pick<ExecResult, "stdout" | "stderr" | "statu
   return s.length > cap ? s.slice(s.length - cap) : s;
 }
 
+function logRunResult(task: Task, status: string, output: string): void {
+  const mark = status === "success" ? "ok" : "FAILED";
+  const tail = output ? ` — ${output.replace(/\s+/g, " ").slice(0, 200)}` : "";
+  console.log(`[run] task ${task.id} "${task.name}" ${mark} at ${new Date().toISOString()}${tail}`);
+}
+
 export class TaskRunner {
   private running = new Set<number>();
-  private notifications = new NotificationService();
 
   isRunning(taskId: number): boolean {
     return this.running.has(taskId);
@@ -75,7 +79,7 @@ export class TaskRunner {
       const status = r.status === "success" ? "success" : "failed";
       await storage.updateTask(task.id, { status, output: summarizeOutput(r) });
       await storage.pruneRuns(task.id);
-      await this.notifications.sendTaskNotification(task, status, summarizeOutput(r, 200));
+      logRunResult(task, status, summarizeOutput(r, 200));
       return row;
     } catch (e) {
       console.error(`[runner] task ${task.id} run ${run.id} could not be recorded:`, e);

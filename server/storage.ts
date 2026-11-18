@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   RUNS_KEEP,
   taskRuns,
@@ -151,15 +151,6 @@ export class DatabaseStorage {
       .returning({ id: tasks.id });
     const future = await pool.query(`UPDATE tasks SET last_run = NULL WHERE last_run > now() + interval '1 day' RETURNING id`);
     return { runs: runs.length, cronTasks: cronTasks.length, ownTasks: ownTasks.length, futureLastRun: future.rowCount ?? 0 };
-  }
-
-  async tasksByIds(ids: number[]): Promise<Task[]> {
-    if (ids.length === 0) return [];
-    return db.select().from(tasks).where(inArray(tasks.id, ids));
-  }
-
-  async deleteRunsBefore(date: Date): Promise<void> {
-    await db.delete(taskRuns).where(lt(taskRuns.startedAt, date));
   }
 }
 
