@@ -3,6 +3,11 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [Unreleased]
+
+### Security
+- **Zod 4 upgrade (`PT-A10`)**: Upgraded `zod` from `3.25.x` to `^4.6.7` to remediate `GHSA-mrhx-c7xc-m3w5` (memory exhaustion while validating oversized constrained collections), updated route error responses to read `v.error.issues`, and added unit tests covering schema and fleet validation.
+
 ## [2.2.2] — 2026-10-04 (Fix Google Auth popup COOP & Referrer-Policy)
 
 ### Fixed
