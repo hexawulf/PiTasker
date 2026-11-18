@@ -186,7 +186,7 @@ router.post(
   "/api/tasks",
   wrap(async (req, res) => {
     const v = taskInputSchema.safeParse(req.body);
-    if (!v.success) return res.status(400).json({ message: "Validation failed", errors: v.error.errors });
+    if (!v.success) return res.status(400).json({ message: "Validation failed", errors: v.error.issues });
     const input = v.data;
     const opts = writeOpts(req);
 
@@ -227,7 +227,7 @@ router.patch(
     const id = idParam(req, res);
     if (id === null) return;
     const v = taskPatchSchema.safeParse(req.body);
-    if (!v.success) return res.status(400).json({ message: "Validation failed", errors: v.error.errors });
+    if (!v.success) return res.status(400).json({ message: "Validation failed", errors: v.error.issues });
     const existing = await storage.getTask(id);
     if (!existing) return res.status(404).json({ message: "Task not found" });
     const next = { ...existing, ...v.data } as Task;
