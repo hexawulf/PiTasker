@@ -12,10 +12,11 @@
 // Every crontab-touching route takes ?dryRun=1 (returns { before, after, hash }
 // for the diff dialog, nothing written) and ?expectedHash= (refused with 409
 // if the crontab changed since the dry run).
-import express, { type NextFunction, type Request, type Response } from "express";
+import express, { type Request, type Response } from "express";
 import { taskInputSchema, taskPatchSchema, type Task, type TaskView } from "@shared/schema";
+import { cachedCrontab, invalidateCrontabCache } from "../crontab/cache";
 import { DisabledLineError, listJobs } from "../crontab/document";
-import { readCrontab, type MutateOptions, type MutateResult } from "../crontab/store";
+import { readCrontab, type MutateResult } from "../crontab/store";
 import { applyTask, cronStates, jobForTask, newCrontabId, removeTask } from "../crontab/sync";
 import { isAuthenticated } from "../middleware/authMiddleware";
 import { cronSeenFor } from "../services/cronSeen";
@@ -23,29 +24,15 @@ import { checkCommand } from "../services/scriptCheck";
 import { AlreadyRunningError, taskRunner } from "../services/taskRunner";
 import { taskScheduler } from "../services/taskScheduler";
 import { storage } from "../storage";
+import { httpError } from "../errors";
+import { wrapWith, writeOpts } from "./http";
 
 const router = express.Router();
 router.use("/api/tasks", isAuthenticated);
 router.use("/api/runs", isAuthenticated);
 
-type Handler = (req: Request, res: Response) => Promise<unknown>;
-/** Map crontab/runner errors to HTTP statuses. */
-const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) =>
-  fn(req, res).catch((e: unknown) => {
-    const err = e as Error & { status?: number };
-    if (e instanceof DisabledLineError) return res.status(409).json({ message: err.message });
-    if (err.status && err.status >= 400 && err.status < 600) return res.status(err.status).json({ message: err.message });
-    console.error(`[tasks] ${req.method} ${req.path}:`, e);
-    next(e);
-  });
-
-function writeOpts(req: Request): MutateOptions {
-  const q = req.query;
-  return {
-    dryRun: q.dryRun === "1" || q.dryRun === "true",
-    expectedHash: typeof q.expectedHash === "string" && q.expectedHash ? q.expectedHash : undefined,
-  };
-}
+/** Crontab/runner errors carry their status; a hand-disabled line is a 409. */
+const wrap = wrapWith("tasks", (e) => (e instanceof DisabledLineError ? 409 : undefined));
 
 const preview = (r: MutateResult) => ({ dryRun: true, changed: r.changed, before: r.before, after: r.after, hash: r.beforeHash });
 
@@ -58,31 +45,14 @@ function idParam(req: Request, res: Response): number | null {
   return id;
 }
 
-let crontabCache: { at: number; value: Awaited<ReturnType<typeof readCrontab>> | null } | null = null;
-let crontabInflight: Promise<Awaited<ReturnType<typeof readCrontab>> | null> | null = null;
-export function invalidateCrontabCache() {
-  crontabCache = null;
-  crontabInflight = null;
-}
-export async function cachedCrontab() {
-  if (crontabCache && Date.now() - crontabCache.at < 3_000) return crontabCache.value;
-  crontabInflight ??= readCrontab()
-    .then((value) => {
-      crontabCache = { at: Date.now(), value };
-      return value;
-    })
-    .catch((e) => {
-      console.warn(`[tasks] cannot read the crontab: ${(e as Error).message}`);
-      crontabCache = { at: Date.now(), value: null };
-      return null;
-    })
-    .finally(() => {
-      crontabInflight = null;
-    });
-  return crontabInflight;
+/** Update a task that may have been deleted meanwhile (another tab, a concurrent request): 404, not a crash. */
+async function updateOr404(id: number, patch: Parameters<typeof storage.updateTask>[1]): Promise<Task> {
+  const updated = await storage.updateTask(id, patch);
+  if (!updated) throw httpError(404, "Task not found");
+  return updated;
 }
 
-export async function buildTaskViews(tasks: Task[]): Promise<TaskView[]> {
+async function buildTaskViews(tasks: Task[]): Promise<TaskView[]> {
   const [cron, latest, seen] = await Promise.all([cachedCrontab(), storage.latestRuns(), cronSeenFor(tasks)]);
   const states = cron ? cronStates(cron.doc, tasks) : new Map();
   return tasks.map((t) => {
@@ -178,7 +148,7 @@ async function assertNotInCrontab(command: string) {
   const { doc } = await readCrontab();
   const clash = listJobs(doc).find((j) => !j.disabled && j.command.trim() === command.trim());
   if (clash) {
-    throw Object.assign(new Error(`The crontab already runs this command ("${clash.schedule} ${clash.command}"): with PiTasker as runner it would run twice. Use the crontab as runner or remove the line.`), { status: 409 });
+    throw httpError(409, `The crontab already runs this command ("${clash.schedule} ${clash.command}"): with PiTasker as runner it would run twice. Use the crontab as runner or remove the line.`);
   }
 }
 
@@ -237,7 +207,7 @@ router.patch(
       if (next.cronSchedule.trim().toLowerCase() === "@reboot") return res.status(400).json({ message: "@reboot needs the crontab as runner" });
       if (v.data.command !== undefined && v.data.command !== existing.command) await assertNotInCrontab(next.command);
       if (opts.dryRun) return res.json({ dryRun: true, changed: false });
-      const updated = (await storage.updateTask(id, v.data))!;
+      const updated = await updateOr404(id, v.data);
       taskScheduler.sync(updated);
       return res.json((await buildTaskViews([updated]))[0]);
     }
@@ -249,7 +219,7 @@ router.patch(
     const r = await applyTask(next, opts, existing);
     invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
-    const updated = (await storage.updateTask(id, { ...v.data, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() }))!;
+    const updated = await updateOr404(id, { ...v.data, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
     taskScheduler.sync(updated);
     res.json((await buildTaskViews([updated]))[0]);
   }),
@@ -295,10 +265,8 @@ router.post(
   }),
 );
 
-async function moveRunner(req: Request, res: Response, to: "cron" | "pitasker") {
-  const id = Number(req.params.id);
-  const task = await storage.getTask(id);
-  if (!task) return res.status(404).json({ message: "Task not found" });
+async function moveRunner(req: Request, res: Response, task: Task, to: "cron" | "pitasker") {
+  const id = task.id;
   const opts = writeOpts(req);
   const current = task.isSystemManaged === false ? "pitasker" : "cron";
   if (current === to) return res.json(opts.dryRun ? { dryRun: true, changed: false } : (await buildTaskViews([task]))[0]);
@@ -308,7 +276,7 @@ async function moveRunner(req: Request, res: Response, to: "cron" | "pitasker") 
     const r = await removeTask(task, opts);
     invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
-    const updated = (await storage.updateTask(id, { isSystemManaged: false, crontabId: null, syncedToCrontab: false, crontabSyncedAt: null }))!;
+    const updated = await updateOr404(id, { isSystemManaged: false, crontabId: null, syncedToCrontab: false, crontabSyncedAt: null });
     taskScheduler.sync(updated);
     return res.json((await buildTaskViews([updated]))[0]);
   }
@@ -325,7 +293,7 @@ async function moveRunner(req: Request, res: Response, to: "cron" | "pitasker") 
   }
   invalidateCrontabCache();
   if (opts.dryRun) return res.json(preview(r));
-  const updated = (await storage.updateTask(id, { isSystemManaged: true, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() }))!;
+  const updated = await updateOr404(id, { isSystemManaged: true, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
   taskScheduler.sync(updated);
   return res.json((await buildTaskViews([updated]))[0]);
 }
@@ -333,10 +301,13 @@ async function moveRunner(req: Request, res: Response, to: "cron" | "pitasker") 
 router.post(
   "/api/tasks/:id/runner",
   wrap(async (req, res) => {
-    if (idParam(req, res) === null) return;
+    const id = idParam(req, res);
+    if (id === null) return;
     const to = req.body?.runner;
     if (to !== "cron" && to !== "pitasker") return res.status(400).json({ message: 'runner must be "cron" or "pitasker"' });
-    await moveRunner(req, res, to);
+    const task = await storage.getTask(id);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    await moveRunner(req, res, task, to);
   }),
 );
 
@@ -348,7 +319,7 @@ router.post(
     if (id === null) return;
     const task = await storage.getTask(id);
     if (!task) return res.status(404).json({ message: "Task not found" });
-    await moveRunner(req, res, task.isSystemManaged === false ? "cron" : "pitasker");
+    await moveRunner(req, res, task, task.isSystemManaged === false ? "cron" : "pitasker");
   }),
 );
 

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { listBackups } from "../../server/crontab/store";
 import { taskScheduler } from "../../server/services/taskScheduler";
 import { storage } from "../../server/storage";
@@ -136,6 +136,14 @@ describe.skipIf(!hasPg)("one runner per task", () => {
     expect(r.body.runner).toBe("pitasker");
     expect(taskScheduler.isScheduled(r.body.id)).toBe(true);
     expect(crontabText()).toBe(CURATED);
+  });
+
+  it("answers 404 (not 500) when the task is deleted while it is being updated", async () => {
+    const r = await c.req("POST", "/api/tasks", { ...cronTask, isSystemManaged: false });
+    vi.spyOn(storage, "updateTask").mockResolvedValueOnce(undefined);
+    const patched = await c.req("PATCH", `/api/tasks/${r.body.id}`, { name: "Renamed" });
+    expect(patched.status).toBe(404);
+    expect(patched.body).toEqual({ message: "Task not found" });
   });
 
   it("refuses a PiTasker-run task whose command the crontab already runs", async () => {

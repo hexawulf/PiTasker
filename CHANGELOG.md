@@ -3,6 +3,50 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.3.0] — unreleased (quality pass: leaner code, lint, docs)
+
+### Added
+- **Fleet empty states**: with filters set, "No job matches the filters."
+  and a *Clear filters* button; without filters, "Nothing is scheduled on any
+  host yet." and, when the hub is the only host, a pointer to
+  `PITASKER_HOSTS`. Both cases used to read "No job matches the filters.".
+- **Lint**: ESLint (`npm run lint`, also in CI) with the recommended rule
+  sets of `@eslint/js`, `typescript-eslint` and `eslint-plugin-react-hooks`;
+  no stylistic rules.
+- **Docs**: README rewrite (badges, features, how it works, configuration,
+  deployment), `SECURITY.md`, new screenshots of Tasks, Fleet and the dark
+  theme made from the E2E harness with demo data (`npm run screenshots`),
+  `engines` (Node ≥ 22) and `.nvmrc`.
+
+### Fixed
+- **Firebase login errors**: an unexpected error (database, session store)
+  in `POST /api/auth/firebase-login` was answered with 401 and its raw
+  message; it is now logged and answered with a generic 500. The
+  verifier's own errors (400/401/403/503) are unchanged.
+- **Task updates racing a delete**: four task routes answered 500 (a
+  TypeError) when the task was deleted during the update; they now answer
+  404 "Task not found".
+
+### Changed
+- One set of route helpers (`server/routes/http.ts`: error wrapper,
+  dry-run/expected-hash options), one `httpError()` (`server/errors.ts`),
+  and the crontab read cache in `server/crontab/cache.ts` instead of a route
+  file. One `isFirebaseEnabled()` for the CSP and the login; one
+  service-account parse.
+- React state: the task form mounts on every open instead of resetting
+  in an effect; the run history and the log page derive their default
+  selection; shortcut handlers no longer read refs during render.
+- One `CONTROL_CHARS` pattern for schedules, commands and task names
+  (task names still also refuse tabs).
+- `.env.example` and the 2.1 fleet-view plan use placeholders (example.com
+  addresses, documentation IP ranges, generic host ids) instead of real
+  ones.
+
+### Removed
+- `docs/archive/` (ten 1.x notes, ~5,800 lines; still in git history, last
+  at tag `v2.2.3`).
+- The `re2js` override (no longer in the dependency tree).
+
 ## [2.2.3] — 2026-11-18 (Security hardening, performance & codebase slimming)
 
 ### Added
@@ -33,8 +77,8 @@ All notable changes to PiTasker. Versions follow semver per phase
 
 ## [2.1.0] — 2026-10-01 (P3: read-only fleet view)
 
-Live on piapps (hub) with agents on piapps2 (LAN), piapps4, piapps3 and
-hwca-ap02 (wg-pideck); PiDeck watches `pitasker-agent` on the agent hosts.
+Live on the hub with agents on four hosts (one on the LAN, three over a
+WireGuard tunnel); PiDeck watches `pitasker-agent` on the agent hosts.
 
 ### Added
 - **Fleet tab** (`g f`): every host's zk + root crontab, /etc/crontab,
@@ -144,7 +188,7 @@ hwca-ap02 (wg-pideck); PiDeck watches `pitasker-agent` on the agent hosts.
   `PITASKER_CRONTAB_BIN`, `PITASKER_BIN_DIR`, `PITASKER_CRON_JOURNAL`, `HOST`,
   `PITASKER_ADMIN_USER` / `PITASKER_ADMIN_PASSWORD` (seed).
 
-### Rollout (piapps, operator, in this order)
+### Rollout (production host, operator, in this order)
 1. Review in a worktree: `git worktree add ../PiTasker-2.0 feat/2.0-p1p2`,
    `npm ci && npm run check && npm run check:theme`,
    `PITASKER_TEST_PG_URL=… npm test`, `PITASKER_TEST_PG_URL=… npm run test:e2e`
@@ -152,12 +196,12 @@ hwca-ap02 (wg-pideck); PiDeck watches `pitasker-agent` on the agent hosts.
 2. Record the current state: `crontab -l > ~/pitasker-crontab-before.txt`;
    `psql pitasker -c "select id,name,cron_schedule,is_system_managed,status from tasks order by id"`
    — note tasks with `is_system_managed = false`: their schedules now run in
-   Asia/Taipei instead of UTC.
+   the host's time zone instead of UTC.
 3. Back up the database: `pg_dump -Fc pitasker > ~/backups/pitasker-$(date +%F).dump`.
 4. `pm2 stop pitasker` (1.x must not write the crontab during the switch).
-5. In `/home/zk/projects/PiTasker`: check out the reviewed commit, `npm ci`.
+5. In the live checkout: check out the reviewed commit, `npm ci`.
 6. `.env`: remove the `VITE_FIREBASE_*` lines; add `CSP_ENFORCE=false`
-   (not `PITASKER_CLOUDFLARE`: piapps' nginx already restores the client IP
+   (not `PITASKER_CLOUDFLARE`: the production nginx already restores the client IP
    from Cloudflare, so `req.ip` is right and the header would be trusted
    from anyone reaching the origin); make sure `SESSION_SECRET` has ≥ 32 characters
    (`openssl rand -hex 32`; everyone is logged out if it changes).
@@ -166,18 +210,18 @@ hwca-ap02 (wg-pideck); PiDeck watches `pitasker-agent` on the agent hosts.
 9. `pm2 delete pitasker && pm2 start ecosystem.config.cjs && pm2 save`
    (the pm2 file changed).
 10. Check `pm2 logs pitasker`: `reset stale state: …` (the five stuck tasks),
-    `[scheduler] time zone Asia/Taipei; PiTasker runs N task(s), the crontab runs M`,
+    `[scheduler] time zone <host zone>; PiTasker runs N task(s), the crontab runs M`,
     `[csp] Report-Only`.
 11. `crontab -l | cmp - ~/pitasker-crontab-before.txt` → identical.
 12. In the UI: log in; Crontab → Import… preview (existing tasks show
     "already a task"; nothing should say "runs twice"); Export tasks →
     expect "Already in sync" (if a diff appears, read it — Cancel writes
-    nothing); Logs tab shows the log; Settings shows Asia/Taipei.
+    nothing); Logs tab shows the log; Settings shows the host's time zone.
 13. For 10 minutes compare `journalctl -u cron --since "-10 min" | grep CMD`
     with `pm2 logs pitasker --lines 200 | grep "\[run\]"`: no command in both.
 14. After a day without `[csp]` lines: `CSP_ENFORCE=true`, `pm2 restart pitasker`.
-15. Optional: `PITASKER_CRON_JOURNAL=on` if zk can read the journal
-    (`journalctl -u cron -n1` works as zk).
+15. Optional: `PITASKER_CRON_JOURNAL=on` if the PiTasker user can read the
+    journal (`journalctl -u cron -n1` works as that user).
 16. Then version 2.0.0, CHANGELOG date, tag, GitHub release.
 
 Rollback: `pm2 stop pitasker`, check out `main`, `npm ci && npm run build`,
@@ -186,4 +230,4 @@ runs on the migrated database; crontab backups are in
 `~/.local/state/pitasker/crontab-backups/`.
 
 ## 1.0.0
-- Initial release (see docs/archive/ for the 1.x notes).
+- Initial release (the 1.x notes were kept in `docs/archive/` up to tag `v2.2.3`).

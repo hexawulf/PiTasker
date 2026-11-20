@@ -81,8 +81,12 @@ export function parseField(src: string, spec: FieldSpec): ParsedField | string {
   return { values, star: src === "*" || /^\*\/1$/.test(src), source: src };
 }
 
+/** Line breaks and other control characters (tab is allowed): never valid in a crontab field or command. */
+// eslint-disable-next-line no-control-regex -- matching control characters is the point
+export const CONTROL_CHARS = /[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+
 export function parseCron(expr: string): ParsedCron {
-  if (/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(expr)) {
+  if (CONTROL_CHARS.test(expr)) {
     return { ok: false, error: "The schedule must be a single line without control characters" };
   }
   const e = expr.trim();
@@ -112,7 +116,7 @@ export function isValidCron(expr: string): boolean {
 
 /** The five-field form node-cron understands (macros expanded); null for @reboot/invalid. */
 export function toFiveFields(expr: string): string | null {
-  if (/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(expr)) return null;
+  if (CONTROL_CHARS.test(expr)) return null;
   const e = expr.trim();
   if (e.startsWith("@")) return MACROS[e.toLowerCase()] ?? null;
   return isValidCron(e) ? e.split(/[ \t]+/).join(" ") : null;

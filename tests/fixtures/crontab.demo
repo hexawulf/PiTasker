@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────
+# Demo crontab for the README screenshots (npm run screenshots).
+# Made-up jobs; scripts live in /srv/scripts.
+# ─────────────────────────────────────────────────────────────
+SHELL=/bin/bash
+MAILTO=""
+
+# ── Backups ───────────────────────────────────────────────────
+# PITASKER_ID:5f0c7a52-1d1e-4c4e-9a43-0d6c2b7e9f10
+# PITASKER_COMMENT:Nightly database backup
+15 2 * * * /srv/scripts/db-backup >> /var/log/demo/db-backup.log 2>&1
+0 4 * * 0 /srv/scripts/offsite-sync --weekly
+
+# ── Monitoring ────────────────────────────────────────────────
+*/5 * * * * /srv/scripts/disk-watch --quiet
+*/15 * * * * /srv/scripts/cert-expiry-check
+
+# ── Housekeeping ──────────────────────────────────────────────
+@daily /srv/scripts/rotate-reports
+30 6 * * 1-5 /srv/scripts/weekday-digest
+@reboot /srv/scripts/on-boot-notify
+#0 3 * * * /srv/scripts/legacy-cleanup

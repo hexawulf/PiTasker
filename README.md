@@ -1,180 +1,193 @@
 # PiTasker
 
-The cron editor for the HexaWulf homelab: see, edit and run the jobs in a
-user's crontab from a web UI, and let PiTasker itself run the jobs that
-should not live in cron. Runs on piapps as the pm2 app `pitasker`
-(<https://pitasker.piapps.dev>, port 5007 behind nginx + Cloudflare).
+[![CI](https://github.com/hexawulf/PiTasker/actions/workflows/ci.yml/badge.svg)](https://github.com/hexawulf/PiTasker/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/hexawulf/PiTasker?label=release&color=brightgreen)](https://github.com/hexawulf/PiTasker/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](.nvmrc)
 
-**Current version: 2.2.3** — released 2026-11-18: security hardening, route code-splitting & lazy Firebase chunk, backend I/O caching, dependency slimming, and Zod 4 upgrade. 2.2.0 (2026-10-04) added Google Firebase authentication with email allowlist & break-glass fallback. 2.1.0 (2026-10-01) added the read-only **Fleet** view across piapps, piapps2, piapps3, piapps4 and hwca-ap02. 2.0.0 (2026-09-30) was the fix-and-refresh release: one runner per job, a crontab that stays exactly as you wrote it, a diff before every write, run history, and the PiDeck 2.0 look. See the [Changelog](CHANGELOG.md).
+A web UI for the crontab on a small Linux server (built for a Raspberry Pi,
+runs on any Linux host). See, edit and run the jobs in a user's crontab,
+let PiTasker run the jobs that should not live in cron, and see — read-only —
+everything that is scheduled on the other hosts of a small fleet.
 
-![PiTasker 2.0 — Tasks (light theme, demo crontab)](docs/screenshots/tasks.png)
+![PiTasker — Tasks (light theme, demo data)](docs/screenshots/tasks.png)
 
-## What's new in 2.2 (2.2.0 – 2.2.3)
-
-- **Google Firebase Auth + break-glass fallback (2.2.0 – 2.2.2)**: Sign in with Google restricted to `FIREBASE_ALLOWED_EMAILS` with server-side `verifyIdToken(..., true)` revocation and `email_verified` checks, fail-closed service account validation, COOP popup compatibility, and local username/password retained as an offline break-glass fallback.
-- **Security hardening (2.2.3)**: Strict newline and C0 control-character rejection across cron schedules, task names, and commands; `sameOrigin` CSRF `Referer` fallback; bounded login and agent rate limiters (`10,000` keys with expired/LRU eviction + reset on login); symlink and leading-`-` rejection on `/api/pitasker-logs/file`; `installCsp` applied across all `/api` and static routes; expanded fleet secret redaction (CLI flags `--password`/`--token`/`--secret`/`--api-key`/`-u`, `ghp_`/`github_pat_`/`sk-`/`xox*` tokens, `CREDENTIAL`/`COOKIE`/`WEBHOOK` env vars); and **0 production `npm audit` vulnerabilities** (upgraded to Zod 4 `^4.6.7`, Vite `^8.3.8`, Vitest `^5.1.0`).
-- **Faster UI & backend I/O (2.2.3)**: Route-level code splitting (`React.lazy` for `Crontab`, `Fleet`, `Logs`, `Settings`, `Login`) and an on-demand Firebase Auth chunk (`-41%` main JS bundle); shared 3 s TTL + in-flight deduplicated crontab cache (`-65%` `/api/crontab` latency); `journalctl -o short-unix --grep` filtering + parallel log `stat` in `cronSeen.ts`; parallel `git` and `/etc/cron.*` collection.
-- **Slimmer footprint & CI (2.2.3)**: Replaced umbrella `firebase` with `@firebase/app` + `@firebase/auth` and removed `tailwindcss-animate` (`node_modules` cut by `-50%` from 288 MB to 145 MB); removed dead 1.x files and circular imports (`madge --circular` = 0); added GitHub Actions CI (`.github/workflows/ci.yml`) and Dependabot (`.github/dependabot.yml`).
-
-## What's new in 2.0
-
-- **No more double runs**: 1.x ran every imported crontab job a second time
-  from its own scheduler (in UTC). Now a job runs from the crontab *or* from
-  PiTasker, and the UI says which.
-- **Your crontab stays yours**: comments, sections, env and disabled lines
-  survive byte-for-byte; writes go through `crontab -` without a shell, with
-  a diff first, a backup before and a read-back after.
-- **Run history**: exit code, duration, stdout and stderr for every run
-  PiTasker starts; last start of cron jobs from their log or the cron journal.
-- **Security**: login on every `/api` route (tested), rate-limited login,
-  helmet + CSP, CSRF guard, SameSite=Lax cookie; Firebase and 11 npm audit
-  findings gone.
-- **UI**: the PiDeck 2.0 design language (light/dark, mobile, keyboard
-  shortcuts, axe-checked), plain-language schedules with the next runs, and
-  an **About** dialog (ⓘ in the header: version, stack, repo and a one-line
-  diagnostics string to paste into bug reports).
-
-## Fleet view (2.1)
-
-The **Fleet** tab (`g f`) shows everything scheduled on the homelab, read-only:
-each host's zk and root crontab, `/etc/crontab`, `/etc/cron.d/*`,
-`cron.{hourly,daily,weekly,monthly}` and systemd timers (system + user), with
-plain-language schedules and next runs in **that host's** time zone, the
-last run (cron journal, log file or systemd), and hints: *same job on two
-hosts*, *script not in bin.git*, *bin replica differs* (from piapps2), *disabled*.
-Two views (by host / all jobs), filters and search kept in the URL. Nothing
-on the page edits or runs anything; piapps' own crontab links to the Crontab tab.
-
-- The hub (piapps) reads itself in-process. Other hosts run the **PiTasker
-  agent**: one file (`dist/agent.mjs`, node built-ins only), as zk, no
-  sudo, `GET /api/agent/health` + `GET /api/agent/cron` only, bearer token
-  (only its SHA-256 on the agent), bound to the LAN/tunnel address,
-  firewalled to the hub. Secrets in commands and env lines are redacted on
-  the agent before anything leaves the host.
-- Root's crontab comes from a root-owned snapshot unit
-  (`/var/lib/pitasker/root-crontab`), not sudo.
-- Install on a host: `npm run build:agent` on piapps, copy `dist/agent.mjs`
-  **and** `scripts/install-agent.sh` + `deploy/` (the installer renders the
-  units from `../deploy/`), then `scripts/install-agent.sh --dry-run --bind <ip> --bundle ~/agent.mjs …`
-  (see `--help`; `--update`, `--rollback`, `--uninstall`, `--root-snapshot-only` for the hub).
-- Hub settings: `PITASKER_HOSTS`, `PITASKER_HOST_TOKEN_<ID>`,
-  `PITASKER_HOST_LABELS`, `PITASKER_HOST_PRODUCTION`, `PITASKER_BIN_MASTER`
-  (see `.env.example`). The plan: [docs/plans/2.1-fleet-view.md](docs/plans/2.1-fleet-view.md).
-
-## What it does
+## Features
 
 - **One runner per task.** A task runs from the **crontab** (PiTasker keeps
-  its line in sync) **or** from **PiTasker's scheduler** — never both.
-  Moving a task between runners edits the crontab and (un)schedules at once.
-  PiTasker's own schedules use the host's time zone.
-- **The crontab stays yours.** Comments, section headers, env lines
-  (`MAILTO=`, `PATH=`, `TZ=`), blank lines, `@reboot`/`@daily`, `\%`
-  escapes and `# DISABLED …` lines are kept byte-for-byte. Importing never
-  writes the crontab; an unchanged export writes nothing. PiTasker only adds
-  its own `# PITASKER_ID:` / `# PITASKER_COMMENT:` markers above lines it
-  changes or adds, and never re-enables a line you commented out.
-- **Every crontab write is shown first** as a diff, then sent with the hash
-  of what you saw (refused if the crontab changed meanwhile). Before each
-  write the old crontab is saved to `~/.local/state/pitasker/crontab-backups/`
-  (newest 50), and after it the crontab is read back and compared; on a
-  mismatch the old one is restored. Backups can be restored from the UI.
-- **Runs PiTasker starts** (scheduled or *Run now*) are recorded: exit code,
-  duration, stdout and stderr (tail kept), timeout kills the whole process
-  group. The job gets a cron-like environment (no PiTasker secrets).
-  For crontab-run jobs PiTasker shows when cron last started them where it
-  can tell (the job's log file, or the cron journal with
-  `PITASKER_CRON_JOURNAL=on`).
-- **Readable schedules**: "every 5 min", "daily 07:04 Asia/Taipei", next
-  three runs, an editor with presets, per-field inputs and live validation,
-  and a warning when a script is outside `/home/zk/bin` or not committed to
-  bin.git (the operator rule).
+  its line in sync) **or** from **PiTasker's scheduler**, never both. Moving
+  a task between runners edits the crontab and (un)schedules it in one step.
+- **Your crontab stays yours.** Comments, section headers, env lines
+  (`MAILTO=`, `PATH=`, `TZ=`), blank lines, `@reboot`/`@daily`, `\%` escapes
+  and commented-out lines are kept byte-for-byte. Import never writes the
+  crontab; an export with no change writes nothing. PiTasker only adds its own
+  `# PITASKER_ID:` / `# PITASKER_COMMENT:` markers above the lines it writes.
+- **A diff before every write.** The write is sent with the hash of what you
+  saw and is refused if the crontab changed meanwhile. The old crontab is
+  backed up first (newest 50 kept, restorable from the UI) and the new one is
+  read back after; on a mismatch the old one is restored.
+- **Run history** for every run PiTasker starts (scheduled or *Run now*):
+  exit code, duration, stdout and stderr (tail kept). A timeout kills the
+  whole process group. For cron-run jobs, the last start comes from the job's
+  log file or the cron journal.
+- **Readable schedules**: "every 5 min", "weekdays 06:30", the next three
+  runs in the host's time zone, and an editor with presets, per-field inputs,
+  live validation and a warning when a script is outside the bin directory or
+  not committed to its git repository.
+- **Fleet view (read-only).** One page for every crontab, `/etc/crontab`,
+  `/etc/cron.d/*`, `cron.{hourly,daily,weekly,monthly}` and systemd timer
+  on every host, in each host's own time zone, with hints: *same job on two
+  hosts*, *script not in bin.git*, *bin replica differs*, *disabled*.
+- **Sign-in**: Google (Firebase Auth) limited to an email allowlist, with a
+  local username/password kept as the break-glass fallback.
+- **UI**: light and dark themes, works at 390 px, keyboard shortcuts
+  (`?` lists them), axe-checked pages, and an About dialog with a one-line
+  diagnostics string for bug reports.
 
-## Stack
+![PiTasker — Fleet view (demo data)](docs/screenshots/fleet.png)
 
-React 18 + Vite 8 + Tailwind (PiDeck 2.0 tokens) · Express 4 · PostgreSQL
-(drizzle-orm, migrations in `migrations/`) · Zod 4 · node-cron · Node 22.
-Memory on piapps: about 102–106 MB RSS steady, ~145 MB briefly at start
-(pm2 restarts it above 256 MB).
+<details>
+<summary>Dark theme</summary>
 
-## Setup
+![PiTasker — Tasks (dark theme, demo data)](docs/screenshots/tasks-dark.png)
+
+</details>
+
+## How it works
+
+```
+browser ──► nginx (TLS) ──► PiTasker hub (Express, pm2)
+                              │  session auth · CSRF guard · CSP
+                              ├─ crontab ◄── server/crontab: parse → edit → diff
+                              │               → backup → `crontab -` → read back
+                              ├─ scheduler + runner (PiTasker-run tasks, run history)
+                              ├─ PostgreSQL (tasks, runs, sessions)
+                              └─ fleet hub ──► PiTasker agent on each host
+                                               GET only · bearer token · LAN/tunnel
+                                               address · redacts secrets first
+```
+
+- The **hub** is one Node process: the React SPA, the API, the scheduler and
+  the fleet hub. It reads its own host in-process.
+- An **agent** is one bundled file (`dist/agent.mjs`, Node built-ins only)
+  with two routes: `GET /api/agent/health` and `GET /api/agent/cron`. It runs
+  as an unprivileged user without sudo; root's crontab comes from a root-owned
+  snapshot unit. Design notes: [docs/plans/2.1-fleet-view.md](docs/plans/2.1-fleet-view.md).
+
+## Quick start
+
+Needs Node 22+, PostgreSQL and a user crontab (`crontab -l` works).
 
 ```bash
 npm ci
 cp .env.example .env        # PORT, DATABASE_URL, SESSION_SECRET (openssl rand -hex 32), …
-npm run db:migrate          # creates or upgrades the schema (baselines a 1.x database)
+npm run db:migrate          # creates or upgrades the schema
 npm run db:seed             # first install only: creates "admin" (random password printed once,
                             # or PITASKER_ADMIN_PASSWORD)
 npm run build
 pm2 start ecosystem.config.cjs && pm2 save
 ```
 
-The server refuses to start while migrations are pending. Every setting is
-listed in [.env.example](.env.example); new in 2.0: `CSP_ENFORCE`,
-`PITASKER_CLOUDFLARE`, `PITASKER_ORIGIN`, `PITASKER_TZ`, `PITASKER_RUN_TIMEOUT_MS`,
-`PITASKER_OUTPUT_CAP`, `PITASKER_STATE_DIR`, `PITASKER_CRONTAB_BIN`,
-`PITASKER_BIN_DIR`, `PITASKER_CRON_JOURNAL`, `HOST`,
-`PITASKER_ADMIN_USER`/`PITASKER_ADMIN_PASSWORD` (seed only). Firebase Auth parameters (`FIREBASE_ENABLED`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_ALLOWED_EMAILS`, and client credentials).
+The server refuses to start while migrations are pending.
 
-## Security
+## Configuration
 
-- **Authentication**: Sign in with Google (Firebase Auth) restricted strictly to authorized operator email addresses (`FIREBASE_ALLOWED_EMAILS`), with the local username/password retained as an offline/break-glass fallback.
-- **Route protection**: Login required for every `/api` route except login endpoints and public config (a test walks the router to enforce it).
-- **Rate limiting**: Login and password changes are rate-limited (10 / 10 min per client; `PITASKER_CLOUDFLARE=1` counts per CF-Connecting-IP — only when the proxy in front does *not* already restore the client IP; piapps' nginx does, so it stays off there).
-- **Session & CSP**: Session cookie `pitasker.sid`: Secure, HttpOnly, SameSite=Lax, regenerated at login. State-changing requests must be same-origin JSON. Helmet headers and a strict CSP with hashes of the inline scripts and scoped Firebase Auth domains (Report-Only until `CSP_ENFORCE=true`; violations are logged as `[csp]` lines).
-- **Password rules**: At least 12 characters, not the username or the current one; changing it logs out other sessions.
+Every setting is in [.env.example](.env.example), with its default. The main ones:
+
+| Variable | Purpose |
+|---|---|
+| `PORT`, `HOST` | Where the hub listens (default host `0.0.0.0`; `127.0.0.1` behind a local nginx) |
+| `DATABASE_URL`, `SESSION_SECRET` | PostgreSQL and the session secret (32+ characters) |
+| `PITASKER_ORIGIN` | The public origin; state-changing requests from another origin are refused |
+| `CSP_ENFORCE` | `true` enforces the CSP (otherwise Report-Only, logged as `[csp]` lines) |
+| `PITASKER_TZ` | Time zone for PiTasker's own schedules (default: the host's) |
+| `PITASKER_BIN_DIR` | Where cron-invoked scripts should live (the editor warns otherwise) |
+| `PITASKER_CRON_JOURNAL` | `on`: read the cron journal for the last start of cron-run jobs |
+| `FIREBASE_*` | Google sign-in: `FIREBASE_ENABLED`, the service account path, `FIREBASE_ALLOWED_EMAILS` and the public client keys |
+| `PITASKER_HOSTS`, `PITASKER_HOST_TOKEN_<ID>` | Fleet agents (`id=http://ip:5017,…`) and one token each |
+
+## Fleet agents
+
+1. `npm run build:agent` on the hub.
+2. Copy `dist/agent.mjs`, `scripts/install-agent.sh` and `deploy/` to the host
+   (the installer renders the systemd units from `../deploy/`).
+3. `scripts/install-agent.sh --dry-run --bind <lan-or-tunnel-ip> --ufw-allow-from <hub-ip> --bundle ~/agent.mjs`,
+   then without `--dry-run`. See `--help` for `--update`, `--rollback`,
+   `--uninstall` and `--root-snapshot-only` (for the hub).
+4. Move the printed token to the hub's `.env` as `PITASKER_HOST_TOKEN_<ID>`
+   and add the host to `PITASKER_HOSTS`.
 
 ## Development and tests
 
 ```bash
-npm run dev                 # tsx server/index.ts (needs a build for the UI, or run vite separately)
+npm run dev                 # tsx server/index.ts
 npm run check               # tsc
-npm run check:theme         # no raw colours outside the --pi-* tokens
+npm run lint                # eslint (recommended rule sets)
+npm run check:theme         # UI colours only from the --pi-* tokens
 npm test                    # vitest; DB suites need PITASKER_TEST_PG_URL (admin URL, creates pitasker_test_*)
-npm run test:e2e            # Playwright; needs PITASKER_TEST_PG_URL; serves dist-e2e/ on :5027
-                            # (+ fleet agents on :5028/:5029 from fixture hosts)
-npm run test:install        # scripts/install-agent.sh with stubs (no root, no real /etc)
+npm run test:e2e            # Playwright against a scratch build on :5027 + fixture fleet agents
+npm run test:install        # the agent installer, with stubs (no root, no real /etc)
 npm run check:shell         # shellcheck
-npm run build:agent         # dist/agent.mjs (fails if it isn't self-contained)
+npm run screenshots         # the README screenshots, from the E2E harness and demo data
 ```
 
-Tests never touch the real crontab or database: a fake `crontab`
-(`tests/fakes/crontab`) is first on PATH with `FAKE_CRONTAB_FILE`, and the
-crontab code refuses to run under vitest/E2E without it; `server/db.ts`
-refuses any database but `pitasker_test_*` / `pitasker_e2e*` in a test run.
-The fleet collector likewise refuses the real `systemctl`, `journalctl`,
-`timedatectl`, `/etc`, `/home/zk/bin` and `/var/lib/pitasker` in tests: fakes
-(`tests/fakes/`) come from `PITASKER_FAKE_BIN_DIR`, fixture hosts from
-`tests/fixtures/fleet/` (systemd 255 and 259; Asia/Taipei, Asia/Singapore,
-Europe/Berlin, Etc/UTC) with a scratch bin.git each.
+Tests never touch the real crontab, database or system: a fake `crontab` is
+first on `PATH` (the crontab code refuses to run under vitest/E2E without
+it), `server/db.ts` accepts only `pitasker_test_*` / `pitasker_e2e*`
+databases in a test run, and the fleet collector refuses the real
+`systemctl`, `journalctl`, `timedatectl` and `/etc` in tests (fakes from
+`tests/fakes/`, fixture hosts from `tests/fixtures/fleet/`). CI runs all of
+the above on every pull request.
 
-## Layout
+## Deployment
+
+PiTasker runs under pm2 (`ecosystem.config.cjs`, settings in `.env`) behind
+a reverse proxy that terminates TLS (Express trusts one proxy hop). To
+update: pull, `npm ci`, `npm run db:migrate`, `npm run build`,
+`pm2 restart pitasker`. Release notes, and upgrade steps where a release
+needs them, are in the [Changelog](CHANGELOG.md).
+
+## Security
+
+- Login on every `/api` route except the login endpoints and the public auth
+  config; a test walks the router to enforce it.
+- Session cookie `pitasker.sid`: Secure, HttpOnly, SameSite=Lax, a new
+  session id at login. State-changing requests must be same-origin JSON.
+- Login and password changes are rate-limited (10 per 10 min per client).
+- Helmet headers and a CSP with hashes of the inline scripts; Firebase hosts
+  only when Google sign-in is on.
+- Passwords: at least 12 characters, not the username; a change logs out the
+  other sessions.
+- Fleet agents: GET only, a bearer token stored as SHA-256, secrets redacted
+  on the agent, no sudo (empty capability bounding set).
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
+## Project layout
 
 ```
 client/src/        React SPA (pages: tasks, crontab, fleet, logs, settings)
 server/app.ts      Express app factory (routes, session, CSRF guard, CSP)
+server/routes/     API routes; http.ts holds the shared handler helpers
 server/crontab/    document.ts (line-preserving parser/editor), store.ts (crontab IO,
-                   backups, read-back), sync.ts (tasks ⇄ crontab)
-server/services/   exec.ts (runs a command), taskRunner.ts, taskScheduler.ts,
-                   cronSeen.ts, scriptCheck.ts
-server/fleet/      collector.ts (one host's snapshot, read-only), hub.ts (agents, saved
-                   snapshots), hints.ts, redact.ts, tools.ts (execFile, test guards)
-server/agent/      the agent (node:http) → dist/agent.mjs; deploy/ its systemd units
-shared/fleet.ts    the snapshot schema (zod, hub-side); shared/fleet-view.ts view helpers
-shared/cron.ts     cron validation, plain-language descriptions, next runs (server + client)
-shared/schema.ts   tables and validation
+                   backups, read-back), sync.ts (tasks ⇄ crontab), cache.ts
+server/services/   exec.ts, taskRunner.ts, taskScheduler.ts, cronSeen.ts, scriptCheck.ts,
+                   firebase-auth.ts
+server/fleet/      collector.ts (one host's snapshot), hub.ts (agents, saved snapshots),
+                   hints.ts, redact.ts, tools.ts (execFile, test guards)
+server/agent/      the agent → dist/agent.mjs; deploy/ holds its systemd units
+shared/            cron.ts (validation, descriptions, next runs), schema.ts (tables),
+                   fleet.ts (snapshot schema)
 migrations/        drizzle SQL; scripts/migrate*.mjs apply them
-docs/plans/2.0.md  the 2.0 plan; docs/archive/ the 1.x notes
+tests/             unit/ (vitest), e2e/ (Playwright), install/, fakes/, fixtures/
+docs/plans/        the 2.0 plan and the 2.1 fleet-view design record
 ```
 
 ## Roadmap
 
-From [docs/plans/2.0.md](docs/plans/2.0.md), after 2.0:
-
-- **P3 — fleet view (read-only)**: released in 2.1.0 (above).
-- **P4 — fleet editing**: edit the zk crontab on piapps2, piapps3, piapps4
-  and hwca-ap02 through a small, separate PiTasker agent (own token,
-  LAN/WireGuard only, diff + backup + audit for every write). Root crontabs
-  and `/etc/cron.d` stay read-only until a later opt-in.
+- **Fleet editing**: edit a user crontab on other hosts through the agent
+  (separate write token, diff + backup + audit for every write). Root
+  crontabs and `/etc/cron.d` stay read-only until a later opt-in.
 
 ## License
 

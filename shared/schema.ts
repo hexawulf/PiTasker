@@ -1,6 +1,6 @@
 import { pgTable, text, serial, integer, boolean, timestamp, varchar, json, index } from "drizzle-orm/pg-core";
 import { z } from "zod";
-import { parseCron } from "./cron";
+import { CONTROL_CHARS, parseCron } from "./cron";
 
 // Schema changes go through migrations/ (npm run db:generate, then
 // npm run db:migrate) — never `db:push` against a live database.
@@ -84,14 +84,14 @@ export const commandSchema = z
   .trim()
   .min(1, "Command is required")
   .max(1000, "Command must be at most 1000 characters")
-  .refine((v) => !/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v), "Command must be a single line without control characters");
+  .refine((v) => !CONTROL_CHARS.test(v), "Command must be a single line without control characters");
 
 export const taskNameSchema = z
   .string()
   .trim()
   .min(1, "Task name is required")
   .max(100, "Task name must be less than 100 characters")
-  .refine((v) => !/[\r\n\x00-\x1f\x7f]/.test(v), "Task name must not contain control characters");
+  .refine((v) => !CONTROL_CHARS.test(v) && !v.includes("\t"), "Task name must not contain control characters");
 
 export const taskInputSchema = z
   .object({

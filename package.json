@@ -1,15 +1,20 @@
 {
   "name": "pitasker",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && node scripts/build-agent.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "screenshots": "playwright test -c playwright.screenshots.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:status": "node scripts/migrate.mjs --status",
@@ -48,6 +53,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@types/bcrypt": "^6.0.0",
     "@types/connect-pg-simple": "^7.0.3",
@@ -61,10 +67,13 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.15",
     "typescript": "5.6.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
   },
@@ -78,7 +87,6 @@
     "minimatch": "^11.0.9",
     "postcss-selector-parser": "^6.1.5",
     "qs": "^6.17.1",
-    "re2js": "^2.10.0",
     "rimraf": "^6.1.4",
     "source-map-js": "^1.2.2",
     "uuid": "^11.1.1"

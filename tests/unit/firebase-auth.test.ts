@@ -7,6 +7,7 @@ import {
   isFirebaseEnabled,
   resetFirebaseAdminForTests,
   verifyFirebaseLogin,
+  type VerifyIdTokenFn,
 } from "../../server/services/firebase-auth";
 
 function fakeDecoded(overrides: Partial<DecodedIdToken> = {}): DecodedIdToken {
@@ -46,12 +47,12 @@ describe("firebase-auth service", () => {
   describe("getFirebaseAllowedEmails", () => {
     it("splits, trims, and lowercases comma-separated emails", () => {
       const env = {
-        FIREBASE_ALLOWED_EMAILS: "admin@example.com, ops@example.org,  test@DOMAIN.COM ",
+        FIREBASE_ALLOWED_EMAILS: "admin@example.com, ops@example.org,  test@EXAMPLE.NET ",
       };
       expect(getFirebaseAllowedEmails(env)).toEqual([
         "admin@example.com",
         "ops@example.org",
-        "test@domain.com",
+        "test@example.net",
       ]);
     });
 
@@ -144,9 +145,7 @@ describe("firebase-auth service", () => {
     });
 
     it("verifies token with checkRevoked=true and accepts an allowlisted email (case-normalised)", async () => {
-      const verifyMock = vi.fn(async (_token: string, _checkRevoked: boolean) =>
-        fakeDecoded({ email: "ADMIN@EXAMPLE.COM" }),
-      );
+      const verifyMock = vi.fn<VerifyIdTokenFn>(async () => fakeDecoded({ email: "ADMIN@EXAMPLE.COM" }));
       const user = await verifyFirebaseLogin("  valid-jwt-token  ", baseEnv, verifyMock);
       expect(verifyMock).toHaveBeenCalledWith("valid-jwt-token", true);
       expect(user).toEqual({

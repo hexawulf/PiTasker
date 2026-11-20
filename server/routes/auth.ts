@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
 import { comparePassword, hashPassword, passwordProblem } from "../auth";
+import type { HttpError } from "../errors";
 import { isAuthenticated, sessionUser, type AuthenticatedSession } from "../middleware/authMiddleware";
 import { createRateLimiter } from "../middleware/rateLimitLogin";
 import { storage } from "../storage";
@@ -91,9 +92,14 @@ router.post("/api/auth/firebase-login", loginLimiter, async (req: Request, res: 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Invalid input: idToken is required." });
     }
-    const err = error as { status?: number; message?: string };
-    const status = typeof err?.status === "number" ? err.status : 401;
-    return res.status(status).json({ message: err?.message || "Firebase login failed." });
+    // verifyFirebaseLogin's own errors carry a status and a message meant for
+    // the user; anything else (database, session store) is logged, not shown.
+    const err = error as HttpError;
+    if (typeof err?.status === "number" && err.status >= 400 && err.status < 600) {
+      return res.status(err.status).json({ message: err.message || "Firebase login failed." });
+    }
+    console.error("Firebase login error:", error);
+    return res.status(500).json({ message: "Internal server error during Firebase login." });
   }
 });
 

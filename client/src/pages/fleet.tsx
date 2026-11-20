@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
  * Fleet (P3, read-only): everything scheduled on every host — crontabs,
  * /etc/crontab, cron.d, run-parts and systemd timers — in each host's own
  * time zone, with cross-host hints. There is deliberately no edit, run,
- * delete or toggle control on this page; piapps' own zk crontab links to the
- * Crontab tab, where editing lives.
+ * delete or toggle control on this page; the hub's own user crontab links to
+ * the Crontab tab, where editing lives.
  */
 
 const FLEET_KEY = ["/api/fleet"];
@@ -396,7 +396,27 @@ export default function FleetPage() {
               ))}
             </div>
           )}
-          {shown.length === 0 && <p className="rounded-xl border border-dashed border-pi-border p-6 text-center text-pi-text-muted">No job matches the filters.</p>}
+          {shown.length === 0 && (
+            <div className="space-y-2 rounded-xl border border-dashed border-pi-border p-6 text-center text-pi-text-muted" data-testid="fleet-empty">
+              {filtering ? (
+                <>
+                  <p>No job matches the filters.</p>
+                  <Button variant="outline" size="sm" className="border-pi-border bg-transparent text-pi-text hover:bg-pi-card-hover" onClick={() => setF({ host: "", source: "", hint: "", q: "" })} data-testid="fleet-clear-filters">
+                    Clear filters
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p>Nothing is scheduled on any host yet.</p>
+                  {fleet.data.hosts.length === 1 && (
+                    <p className="text-xs">
+                      Only this host is configured. Add agents with <code>PITASKER_HOSTS</code> (see <code>.env.example</code>).
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
     </section>

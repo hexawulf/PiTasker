@@ -49,6 +49,7 @@ export async function expectNoHorizontalScroll(page: Page) {
 
 export const test = base.extend<{ cleanState: void }>({
   cleanState: [
+    // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring pattern here
     async ({}, use) => {
       await resetState();
       await use();

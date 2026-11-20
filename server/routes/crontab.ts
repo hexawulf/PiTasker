@@ -1,29 +1,21 @@
 // The crontab itself: view (every line, as written), import/export, validate,
 // backups and restore. Writes take ?dryRun=1 / ?expectedHash= like the task routes.
-import express, { type NextFunction, type Request, type Response } from "express";
+import express, { type Request } from "express";
 import { describeCron } from "@shared/cron";
+import { cachedCrontab, invalidateCrontabCache } from "../crontab/cache";
 import { listJobs } from "../crontab/document";
-import { listBackups, mutateCrontab, readBackup, readCrontab, type MutateOptions } from "../crontab/store";
+import { listBackups, mutateCrontab, readBackup, readCrontab } from "../crontab/store";
 import { cronStates, doubleRuns, exportToCrontab, importFromCrontab, jobForTask } from "../crontab/sync";
 import { isAuthenticated } from "../middleware/authMiddleware";
 import { storage } from "../storage";
-import { cachedCrontab, invalidateCrontabCache } from "./tasks";
+import { wrapWith, writeOpts as baseWriteOpts } from "./http";
 
 const router = express.Router();
 router.use(isAuthenticated);
 
-const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
-  fn(req, res).catch((e: Error & { status?: number }) => {
-    if (e.status && e.status >= 400 && e.status < 600) return res.status(e.status).json({ message: e.message });
-    console.error(`[crontab] ${req.method} ${req.path}:`, e);
-    next(e);
-  });
-
-function writeOpts(req: Request): MutateOptions {
-  const dry = req.query.dryRun ?? req.body?.dryRun;
-  const hash = req.query.expectedHash ?? req.body?.expectedHash;
-  return { dryRun: dry === "1" || dry === "true" || dry === true, expectedHash: typeof hash === "string" && hash ? hash : undefined };
-}
+const wrap = wrapWith("crontab");
+/** Crontab writes also accept dryRun / expectedHash in the JSON body. */
+const writeOpts = (req: Request) => baseWriteOpts(req, { body: true });
 
 /** Every line with its kind; job lines carry their id, description and linked task. */
 router.get(

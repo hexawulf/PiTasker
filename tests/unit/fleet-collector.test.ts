@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -64,7 +65,7 @@ describe("alpha (systemd 259, Asia/Taipei)", () => {
     const s = await collect();
     const zk = crontab(s, "zk");
     const raw = fs.readFileSync(env.FAKE_CRONTAB_FILE, "utf8");
-    expect(zk.hash).toBe(require("crypto").createHash("sha256").update(raw).digest("hex"));
+    expect(zk.hash).toBe(createHash("sha256").update(raw).digest("hex"));
     expect(zk.entries).toHaveLength(9);
     const poll = zkEntry(s, "status-poll >>");
     expect(poll.nextRuns).toEqual(["2026-10-01T02:05:00.000Z", "2026-10-01T02:10:00.000Z", "2026-10-01T02:15:00.000Z"]);
@@ -246,7 +247,7 @@ describe("guards: tests never reach the real system", () => {
     expect(() => fleetPaths({ ...process.env, PITASKER_BIN_DIR: "/home/zk/bin/../bin" })).toThrow(/refusing/);
   });
 
-  it("allows fixtures in a checkout under /home/zk (the E2E on piapps)", () => {
+  it("allows fixtures in a checkout under /home/zk (the E2E on the hub)", () => {
     host("alpha");
     for (const dir of ["/home/zk/projects/PiTasker/.e2e/fleet/beta/home/bin", "/home/zk/binx", "/var/lib/pitasker-fixture/root-crontab"]) {
       const key = dir.startsWith("/var") ? "PITASKER_ROOT_CRON_SNAPSHOT" : "PITASKER_BIN_DIR";
