@@ -45,6 +45,13 @@ function idParam(req: Request, res: Response): number | null {
   return id;
 }
 
+/** Update a task that may have been deleted meanwhile (another tab, a concurrent request): 404, not a crash. */
+async function updateOr404(id: number, patch: Parameters<typeof storage.updateTask>[1]): Promise<Task> {
+  const updated = await storage.updateTask(id, patch);
+  if (!updated) throw httpError(404, "Task not found");
+  return updated;
+}
+
 async function buildTaskViews(tasks: Task[]): Promise<TaskView[]> {
   const [cron, latest, seen] = await Promise.all([cachedCrontab(), storage.latestRuns(), cronSeenFor(tasks)]);
   const states = cron ? cronStates(cron.doc, tasks) : new Map();
@@ -200,7 +207,7 @@ router.patch(
       if (next.cronSchedule.trim().toLowerCase() === "@reboot") return res.status(400).json({ message: "@reboot needs the crontab as runner" });
       if (v.data.command !== undefined && v.data.command !== existing.command) await assertNotInCrontab(next.command);
       if (opts.dryRun) return res.json({ dryRun: true, changed: false });
-      const updated = (await storage.updateTask(id, v.data))!;
+      const updated = await updateOr404(id, v.data);
       taskScheduler.sync(updated);
       return res.json((await buildTaskViews([updated]))[0]);
     }
@@ -212,7 +219,7 @@ router.patch(
     const r = await applyTask(next, opts, existing);
     invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
-    const updated = (await storage.updateTask(id, { ...v.data, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() }))!;
+    const updated = await updateOr404(id, { ...v.data, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
     taskScheduler.sync(updated);
     res.json((await buildTaskViews([updated]))[0]);
   }),
@@ -269,7 +276,7 @@ async function moveRunner(req: Request, res: Response, task: Task, to: "cron" | 
     const r = await removeTask(task, opts);
     invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
-    const updated = (await storage.updateTask(id, { isSystemManaged: false, crontabId: null, syncedToCrontab: false, crontabSyncedAt: null }))!;
+    const updated = await updateOr404(id, { isSystemManaged: false, crontabId: null, syncedToCrontab: false, crontabSyncedAt: null });
     taskScheduler.sync(updated);
     return res.json((await buildTaskViews([updated]))[0]);
   }
@@ -286,7 +293,7 @@ async function moveRunner(req: Request, res: Response, task: Task, to: "cron" | 
   }
   invalidateCrontabCache();
   if (opts.dryRun) return res.json(preview(r));
-  const updated = (await storage.updateTask(id, { isSystemManaged: true, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() }))!;
+  const updated = await updateOr404(id, { isSystemManaged: true, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
   taskScheduler.sync(updated);
   return res.json((await buildTaskViews([updated]))[0]);
 }
