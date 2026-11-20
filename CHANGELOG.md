@@ -3,6 +3,50 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.3.0] — unreleased (quality pass: leaner code, lint, docs)
+
+### Added
+- **Fleet empty states**: with filters set, "No job matches the filters."
+  and a *Clear filters* button; without filters, "Nothing is scheduled on any
+  host yet." and, when the hub is the only host, a pointer to
+  `PITASKER_HOSTS`. Both cases used to read "No job matches the filters.".
+- **Lint**: ESLint (`npm run lint`, also in CI) with the recommended rule
+  sets of `@eslint/js`, `typescript-eslint` and `eslint-plugin-react-hooks`;
+  no stylistic rules.
+- **Docs**: README rewrite (badges, features, how it works, configuration,
+  deployment), `SECURITY.md`, new screenshots of Tasks, Fleet and the dark
+  theme made from the E2E harness with demo data (`npm run screenshots`),
+  `engines` (Node ≥ 22) and `.nvmrc`.
+
+### Fixed
+- **Firebase login errors**: an unexpected error (database, session store)
+  in `POST /api/auth/firebase-login` was answered with 401 and its raw
+  message; it is now logged and answered with a generic 500. The
+  verifier's own errors (400/401/403/503) are unchanged.
+- **Task updates racing a delete**: four task routes answered 500 (a
+  TypeError) when the task was deleted during the update; they now answer
+  404 "Task not found".
+
+### Changed
+- One set of route helpers (`server/routes/http.ts`: error wrapper,
+  dry-run/expected-hash options), one `httpError()` (`server/errors.ts`),
+  and the crontab read cache in `server/crontab/cache.ts` instead of a route
+  file. One `isFirebaseEnabled()` for the CSP and the login; one
+  service-account parse.
+- React state: the task form mounts on every open instead of resetting
+  in an effect; the run history and the log page derive their default
+  selection; shortcut handlers no longer read refs during render.
+- One `CONTROL_CHARS` pattern for schedules, commands and task names
+  (task names still also refuse tabs).
+- `.env.example` and the 2.1 fleet-view plan use placeholders (example.com
+  addresses, documentation IP ranges, generic host ids) instead of real
+  ones.
+
+### Removed
+- `docs/archive/` (ten 1.x notes, ~5,800 lines; still in git history, last
+  at tag `v2.2.3`).
+- The `re2js` override (no longer in the dependency tree).
+
 ## [2.2.3] — 2026-11-18 (Security hardening, performance & codebase slimming)
 
 ### Added
