@@ -9,6 +9,7 @@ import fs from "fs";
 import path from "path";
 import express, { type Express } from "express";
 import helmet from "helmet";
+import { isFirebaseEnabled } from "./services/firebase-auth";
 
 const INLINE_SCRIPT_RE = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
 
@@ -45,11 +46,7 @@ export function inlineScriptHashes(html: string): string[] {
 }
 
 export function cspDirectives(scriptHashes: string[], opts?: { firebase?: boolean }): Record<string, string[]> {
-  const allowFirebase = opts?.firebase ?? (
-    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "true" ||
-    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "1" ||
-    (process.env.FIREBASE_ENABLED || "").trim().toLowerCase() === "yes"
-  );
+  const allowFirebase = opts?.firebase ?? isFirebaseEnabled();
   const scriptSrc = ["'self'", ...scriptHashes, CLOUDFLARE_INSIGHTS.script];
   const connectSrc = ["'self'", CLOUDFLARE_INSIGHTS.connect];
   const frameSrc = ["'self'"];
