@@ -3,7 +3,7 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
-## [2.3.0] — unreleased (quality pass: leaner code, lint, docs)
+## [2.3.0] — 2026-11-20 (quality pass: leaner code, lint, docs)
 
 ### Added
 - **Fleet empty states**: with filters set, "No job matches the filters."
