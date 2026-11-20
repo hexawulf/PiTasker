@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,9 @@ import { api } from "@/lib/api";
 /** PiTasker's own log files (LOG_DIR, within LOG_RETENTION_DAYS): the last 100 lines of one. */
 export default function LogsPage() {
   const files = useQuery<string[]>({ queryKey: ["/api/pitasker-logs"] });
-  const [file, setFile] = useState<string>("");
-  useEffect(() => {
-    if (!file && files.data?.length) setFile([...files.data].sort().reverse()[0]);
-  }, [files.data, file]);
+  // The file the user chose; until then the newest one.
+  const [chosen, setFile] = useState<string>("");
+  const file = chosen || (files.data?.length ? [...files.data].sort().reverse()[0] : "");
   // ?name=: nginx refuses URL paths ending in .log.
   const content = useQuery<{ content: string }>({
     queryKey: ["/api/pitasker-logs/file", file],

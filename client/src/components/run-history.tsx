@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TaskRun, TaskView } from "@shared/schema";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,14 +17,16 @@ export function RunHistory({ task, onOpenChange }: { task: TaskView | null; onOp
     enabled: task !== null,
     refetchInterval: (q) => (q.state.data?.some((r) => r.status === "running") ? 2_000 : false),
   });
-  const [selected, setSelected] = useState<number | null>(null);
+  // The run the user clicked; forgotten when the dialog shows another task (or closes).
+  const [picked, setSelected] = useState<number | null>(null);
+  const [pickedFor, setPickedFor] = useState(task);
+  if (pickedFor !== task) {
+    setPickedFor(task);
+    setSelected(null);
+  }
   const [stream, setStream] = useState<"stdout" | "stderr">("stdout");
-  useEffect(() => {
-    if (runs.data?.length && (selected === null || !runs.data.some((r) => r.id === selected))) setSelected(runs.data[0].id);
-  }, [runs.data, selected]);
-  useEffect(() => {
-    if (task === null) setSelected(null);
-  }, [task]);
+  // Shown: the clicked run while it is still listed, otherwise the newest.
+  const selected = runs.data?.some((r) => r.id === picked) ? picked : (runs.data?.[0]?.id ?? null);
   const run = useQuery<TaskRun>({
     queryKey: ["/api/runs", selected ?? 0],
     enabled: selected !== null,

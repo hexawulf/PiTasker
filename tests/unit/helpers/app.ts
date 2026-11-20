@@ -12,6 +12,8 @@ export const PASSWORD = "correct horse battery staple";
 
 export type Client = {
   base: string;
+  // Responses are arbitrary JSON; the tests read their fields directly.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   req: (method: string, path: string, body?: unknown) => Promise<{ status: number; body: any }>;
   close: () => void;
 };

@@ -79,7 +79,7 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
     projectId ??= parsed.project_id || undefined;
   } catch (err) {
     console.error(`[Firebase] Failed to load the service account (${source}):`, err);
-    throw new Error(keyPath ? "Failed to load Firebase service account from " + keyPath : "Invalid FIREBASE_SERVICE_ACCOUNT_JSON");
+    throw new Error(keyPath ? "Failed to load Firebase service account from " + keyPath : "Invalid FIREBASE_SERVICE_ACCOUNT_JSON", { cause: err });
   }
 
   const existingApps = getApps();

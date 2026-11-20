@@ -1,4 +1,4 @@
-# CI for every pull request and push to main: typecheck, unit + PostgreSQL
+# CI for every pull request and push to main: typecheck, lint, unit + PostgreSQL
 # tests, client/server/agent build, installer tests, shellcheck, theme tokens,
 # and full Playwright E2E against a scratch database and fake crontab/fleet.
 name: CI
@@ -53,6 +53,9 @@ jobs:
 
       - name: Typecheck
         run: npm run check
+
+      - name: Lint
+        run: npm run lint
 
       - name: Unit and database tests
         run: npm test

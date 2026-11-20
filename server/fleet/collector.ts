@@ -421,6 +421,7 @@ export async function collectSnapshot(opts: CollectOptions): Promise<Snapshot> {
     try {
       return await fn();
     } catch (e) {
+      // eslint-disable-next-line no-control-regex -- control characters out of error text, on purpose
       errors.push({ source, message: String((e as Error).message ?? e).replace(/[\u0000-\u001f]/g, " ").slice(0, 300) });
       return fallback;
     }

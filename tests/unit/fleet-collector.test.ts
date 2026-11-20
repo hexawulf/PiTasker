@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -64,7 +65,7 @@ describe("alpha (systemd 259, Asia/Taipei)", () => {
     const s = await collect();
     const zk = crontab(s, "zk");
     const raw = fs.readFileSync(env.FAKE_CRONTAB_FILE, "utf8");
-    expect(zk.hash).toBe(require("crypto").createHash("sha256").update(raw).digest("hex"));
+    expect(zk.hash).toBe(createHash("sha256").update(raw).digest("hex"));
     expect(zk.entries).toHaveLength(9);
     const poll = zkEntry(s, "status-poll >>");
     expect(poll.nextRuns).toEqual(["2026-10-01T02:05:00.000Z", "2026-10-01T02:10:00.000Z", "2026-10-01T02:15:00.000Z"]);

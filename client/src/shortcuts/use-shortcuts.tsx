@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/components/theme-provider";
@@ -12,7 +12,7 @@ const TABS: Partial<Record<ShortcutId, string>> = { "go-tasks": "/tasks", "go-cr
 
 /** Global keys (see shortcuts.ts); pages add their own actions with useShortcutAction. */
 export function ShortcutsProvider({ children }: { children: ReactNode }) {
-  const handlers = useRef<Handlers>(new Map()).current;
+  const [handlers] = useState<Handlers>(() => new Map());
   const [help, setHelp] = useState(false);
   const [, navigate] = useLocation();
   const { toggleTheme } = useTheme();
@@ -79,7 +79,10 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
 export function useShortcutAction(id: ShortcutId, fn: () => void) {
   const ctx = useContext(Ctx);
   const ref = useRef(fn);
-  ref.current = fn;
+  // The latest fn, updated after render (keys fire later, from an event).
+  useLayoutEffect(() => {
+    ref.current = fn;
+  });
   useEffect(() => {
     if (!ctx) return;
     const h = () => ref.current();
