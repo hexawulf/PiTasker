@@ -51,7 +51,7 @@ export function createApp(opts: AppOptions = {}): Express {
       cookie: {
         httpOnly: true,
         secure: true,
-        sameSite: "lax", // same origin: the SPA and the API share pitasker.piapps.dev
+        sameSite: "lax", // same origin: the SPA and the API share one host name
         maxAge: 1000 * 60 * 60 * 24,
       },
     }),

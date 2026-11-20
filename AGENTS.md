@@ -1,7 +1,8 @@
 # PiTasker — agent instructions
 
 PiTasker edits a real user's crontab and runs shell commands. Treat both as
-production: the hand-curated zk crontab on piapps must survive every change.
+production: the hand-curated crontab on the production host must survive
+every change.
 
 ## Commands
 
@@ -60,6 +61,6 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
 
 ## Deploy (operator, CLI)
 
-pm2 app `pitasker` runs `/home/zk/projects/PiTasker/dist/index.js`;
+pm2 app `pitasker` runs `dist/index.js` from the production checkout;
 building in that checkout deploys. See the rollout steps in the CHANGELOG
 entry for the release.

@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
  * Fleet (P3, read-only): everything scheduled on every host — crontabs,
  * /etc/crontab, cron.d, run-parts and systemd timers — in each host's own
  * time zone, with cross-host hints. There is deliberately no edit, run,
- * delete or toggle control on this page; piapps' own zk crontab links to the
- * Crontab tab, where editing lives.
+ * delete or toggle control on this page; the hub's own user crontab links to
+ * the Crontab tab, where editing lives.
  */
 
 const FLEET_KEY = ["/api/fleet"];
