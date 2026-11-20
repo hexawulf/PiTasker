@@ -67,6 +67,15 @@ test("all jobs: one table, schedules in the host's zone, filters and search kept
   await expect(page.getByTestId("fleet-table").getByTestId("fleet-table-row")).toHaveCount(2);
 });
 
+test("no match: says the filters are the reason and clears them", async ({ page }) => {
+  await page.getByTestId("fleet-search").fill("no-such-job-anywhere");
+  await expect(page.getByTestId("fleet-empty")).toContainText("No job matches the filters.");
+  await page.getByTestId("fleet-clear-filters").click();
+  await expect(page.getByTestId("fleet-search")).toHaveValue("");
+  await expect(page.getByTestId("fleet-empty")).toHaveCount(0);
+  await expect(page.getByTestId("fleet-row").first()).toBeVisible();
+});
+
 test("hints: same job on two hosts, script not in bin.git, disabled", async ({ page }) => {
   await page.getByTestId("view-jobs").click();
   await page.getByTestId("filter-hint").selectOption("same-job");
@@ -83,7 +92,7 @@ test("hints: same job on two hosts, script not in bin.git, disabled", async ({ p
   await expect(rows.filter({ hasText: "old-sync" })).not.toHaveCount(0);
 });
 
-test("read-only: no edit/run/delete/toggle controls; secrets never shown; piapps' zk crontab links to the Crontab tab", async ({ page }) => {
+test("read-only: no edit/run/delete/toggle controls; secrets never shown; the hub's zk crontab links to the Crontab tab", async ({ page }) => {
   const main = page.locator("#main");
   for (const view of ["view-hosts", "view-jobs"]) {
     await page.getByTestId(view).click();

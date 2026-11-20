@@ -396,7 +396,27 @@ export default function FleetPage() {
               ))}
             </div>
           )}
-          {shown.length === 0 && <p className="rounded-xl border border-dashed border-pi-border p-6 text-center text-pi-text-muted">No job matches the filters.</p>}
+          {shown.length === 0 && (
+            <div className="space-y-2 rounded-xl border border-dashed border-pi-border p-6 text-center text-pi-text-muted" data-testid="fleet-empty">
+              {filtering ? (
+                <>
+                  <p>No job matches the filters.</p>
+                  <Button variant="outline" size="sm" className="border-pi-border bg-transparent text-pi-text hover:bg-pi-card-hover" onClick={() => setF({ host: "", source: "", hint: "", q: "" })} data-testid="fleet-clear-filters">
+                    Clear filters
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p>Nothing is scheduled on any host yet.</p>
+                  {fleet.data.hosts.length === 1 && (
+                    <p className="text-xs">
+                      Only this host is configured. Add agents with <code>PITASKER_HOSTS</code> (see <code>.env.example</code>).
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
     </section>
