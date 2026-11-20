@@ -17,6 +17,7 @@ import { createHash } from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { httpError } from "../errors";
 import { parseCrontab, serializeCrontab, withFinalNewline, type CrontabDoc } from "./document";
 
 export const BACKUP_KEEP = 50;
@@ -128,9 +129,9 @@ export function pruneBackups(keep = BACKUP_KEEP): void {
 }
 
 export function readBackup(name: string): string {
-  if (!BACKUP_RE.test(name)) throw Object.assign(new Error("Invalid backup name"), { status: 400 });
+  if (!BACKUP_RE.test(name)) throw httpError(400, "Invalid backup name");
   const file = path.join(backupDir(), name);
-  if (!fs.existsSync(file)) throw Object.assign(new Error("Backup not found"), { status: 404 });
+  if (!fs.existsSync(file)) throw httpError(404, "Backup not found");
   return fs.readFileSync(file, "utf8");
 }
 
