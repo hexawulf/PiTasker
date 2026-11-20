@@ -163,7 +163,7 @@ shared/fleet.ts    the snapshot schema (zod, hub-side); shared/fleet-view.ts vie
 shared/cron.ts     cron validation, plain-language descriptions, next runs (server + client)
 shared/schema.ts   tables and validation
 migrations/        drizzle SQL; scripts/migrate*.mjs apply them
-docs/plans/2.0.md  the 2.0 plan; docs/archive/ the 1.x notes
+docs/plans/        the 2.0 plan and the 2.1 fleet-view design record
 ```
 
 ## Roadmap

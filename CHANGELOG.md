@@ -186,4 +186,4 @@ runs on the migrated database; crontab backups are in
 `~/.local/state/pitasker/crontab-backups/`.
 
 ## 1.0.0
-- Initial release (see docs/archive/ for the 1.x notes).
+- Initial release (the 1.x notes were kept in `docs/archive/` up to tag `v2.2.3`).
