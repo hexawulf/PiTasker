@@ -1,5 +1,5 @@
 // Collects one host's snapshot for the fleet view (read-only). Shared by the
-// agent (dist/agent.mjs, on piapps2/3/4 and hwca-ap02) and the hub (piapps,
+// agent (dist/agent.mjs, on each fleet host) and the hub (for its own host,
 // in-process). Only reads; every program runs through runTool (fixed argv).
 //
 //   timedatectl show -p Timezone --value   → host zone (→ /etc/timezone → $TZ → Etc/UTC)
@@ -137,7 +137,7 @@ export function scriptInfo(p: string, binDir: string, bin: BinState | null): Scr
 
 /**
  * journalctl -o short-unix lines → user → command → newest start (ms):
- *   "1790641141.096707 piapps CRON[641478]: (zk) CMD (/home/zk/bin/x.sh >> …)"
+ *   "1790641141.096707 myhost CRON[641478]: (zk) CMD (/home/zk/bin/x.sh >> …)"
  * Lines that aren't a cron CMD (pam_unix, "-- Boot …", garbage) are skipped.
  */
 const JOURNAL_CMD = /^(\d{1,12})\.(\d{1,6}) \S+ [^:\s]+: \(([^)\s]+)\) CMD \((.*)\)$/;
@@ -160,7 +160,7 @@ async function readJournal(): Promise<Map<string, Map<string, number>>> {
   const out = await runTool(
     "journalctl",
     // short-unix + --grep (journald filters): ~10× smaller than -o json —
-    // piapps: 0.8 MB instead of 7.9 MB for 2 days, and no JSON.parse per line
+    // measured: 0.8 MB instead of 7.9 MB for 2 days, and no JSON.parse per line
     // (the JSON read pushed the agent's peak RSS from 88 to 121 MB on arm64).
     ["--since=-2d", "-o", "short-unix", "--no-pager", "-q", "--grep=^\\(\\S+\\) CMD \\(", "SYSLOG_IDENTIFIER=CRON", "_SYSTEMD_UNIT=cron.service"],
     { timeoutMs: 10_000, maxBytes: 4 * 1024 * 1024 },

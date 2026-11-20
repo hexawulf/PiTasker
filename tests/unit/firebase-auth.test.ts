@@ -47,12 +47,12 @@ describe("firebase-auth service", () => {
   describe("getFirebaseAllowedEmails", () => {
     it("splits, trims, and lowercases comma-separated emails", () => {
       const env = {
-        FIREBASE_ALLOWED_EMAILS: "admin@example.com, ops@example.org,  test@DOMAIN.COM ",
+        FIREBASE_ALLOWED_EMAILS: "admin@example.com, ops@example.org,  test@EXAMPLE.NET ",
       };
       expect(getFirebaseAllowedEmails(env)).toEqual([
         "admin@example.com",
         "ops@example.org",
-        "test@domain.com",
+        "test@example.net",
       ]);
     });
 
