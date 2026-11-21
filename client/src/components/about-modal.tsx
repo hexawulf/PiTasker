@@ -91,10 +91,10 @@ export default function AboutModal() {
             </ul>
           </div>
           <div>
-            <h2 className="mb-1 font-bold">Contact</h2>
-            <p>Author: 0xWulf</p>
+            <h2 className="mb-1 font-bold">Developer</h2>
             <p>
-              Email: <a href="mailto:dev@0xwulf.dev" className="underline">dev@0xwulf.dev</a>
+              Erling Wulf Weinreich (0xWulf) ·{" "}
+              <a href="mailto:dev@0xwulf.dev" className="underline">dev@0xwulf.dev</a>
             </p>
           </div>
           <div>
