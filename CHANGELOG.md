@@ -3,6 +3,17 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.3.1] — 2026-11-22 (dependency updates)
+
+### Changed
+
+- Dependabot updates: the minor/patch group (firebase 0.16.7/1.13.11, tanstack-query, drizzle-orm 0.45.4, firebase-admin 14.5.1, pg 8.23.1, wouter 3.13, Playwright 1.65.1, eslint 10.15, typescript 5.9.3 …), vitest 5.1.1, `@types/node` 26, dotenv 18, tailwind-merge 3, lucide-react 1.x; GitHub Actions `checkout` 7 and `setup-node` 7.
+- No app or agent changes; `dist/agent.mjs` stays node-built-ins only.
+
+### Rollout
+
+Build in the production checkout, `pm2 restart pitasker`, check `/healthz` and the About version. Agents need no update.
+
 ## [2.3.0] — 2026-11-20 (quality pass: leaner code, lint, docs)
 
 ### Added
