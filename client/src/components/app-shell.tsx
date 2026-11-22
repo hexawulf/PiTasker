@@ -64,7 +64,7 @@ export default function AppShell({ tab }: { tab: string }) {
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex h-14 items-center justify-between gap-2">
             <div className="flex min-w-0 items-center space-x-3">
-              <Link href="/tasks" tabIndex={-1} aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pi-accent">
+              <Link href="/tasks" tabIndex={-1} aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pi-brand">
                 <ListTodo className="h-5 w-5 text-pi-on-accent" />
               </Link>
               <div className="min-w-0">

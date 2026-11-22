@@ -104,7 +104,7 @@ export default function LoginPage() {
       <div className="absolute right-4 top-4"><ThemeToggle /></div>
       <div className="w-full max-w-sm rounded-xl border border-pi-border bg-pi-card p-6 text-pi-text shadow-lg">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pi-accent">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pi-brand">
             <ListTodo className="h-5 w-5 text-pi-on-accent" aria-hidden />
           </div>
           <div>
