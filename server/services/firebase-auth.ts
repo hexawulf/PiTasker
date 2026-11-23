@@ -63,6 +63,12 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
     return firebaseAdminApp;
   }
 
+  const existingApps = getApps();
+  if (existingApps && existingApps.length > 0 && existingApps[0]) {
+    firebaseAdminApp = existingApps[0];
+    return firebaseAdminApp;
+  }
+
   const keyPath = (env.FIREBASE_SERVICE_ACCOUNT_PATH || "").trim();
   const rawJson = (env.FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
   if (!keyPath && !rawJson) {
@@ -80,12 +86,6 @@ export function getFirebaseAdminApp(env: NodeJS.ProcessEnv = process.env): App {
   } catch (err) {
     console.error(`[Firebase] Failed to load the service account (${source}):`, err);
     throw new Error(keyPath ? "Failed to load Firebase service account from " + keyPath : "Invalid FIREBASE_SERVICE_ACCOUNT_JSON", { cause: err });
-  }
-
-  const existingApps = getApps();
-  if (existingApps && existingApps.length > 0 && existingApps[0]) {
-    firebaseAdminApp = existingApps[0];
-    return firebaseAdminApp;
   }
 
   firebaseAdminApp = initializeApp({

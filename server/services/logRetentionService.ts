@@ -1,31 +1,26 @@
-import fs from 'fs';
-import path from 'path';
-import { z } from 'zod';
+import fs from "fs";
+import path from "path";
 
-export const getLogDir = () => process.env.LOG_DIR || '/home/zk/logs/pitasker';
+export const getLogDir = () => process.env.LOG_DIR || "/home/zk/logs/pitasker";
 export const LOG_PATTERN = /^([\w.-]+)-(\d{4}-\d{2}-\d{2})\.log$/;
 
-const envSchema = z.object({
-  LOG_RETENTION_DAYS: z.coerce.number().positive().default(7),
-  LOG_CLEANUP_DRY_RUN: z.preprocess((val) => val === 'true', z.boolean()).default(false),
-});
+function parseRetentionDays(raw: string | undefined): number {
+  if (raw === undefined) return 7;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.warn(`[LOG-CLEANUP] Invalid LOG_RETENTION_DAYS "${raw}", falling back to 7`);
+    return 7;
+  }
+  return Math.floor(n) || 1;
+}
 
 export class LogRetentionService {
   private retentionDays: number;
   private dryRun: boolean;
 
   constructor() {
-    const rawRetention = process.env.LOG_RETENTION_DAYS;
-    if (rawRetention !== undefined && (isNaN(Number(rawRetention)) || Number(rawRetention) <= 0)) {
-        console.warn(`[LOG-CLEANUP] Invalid LOG_RETENTION_DAYS "${rawRetention}", falling back to 7`);
-    }
-
-    const config = envSchema.parse({
-      LOG_RETENTION_DAYS: process.env.LOG_RETENTION_DAYS,
-      LOG_CLEANUP_DRY_RUN: process.env.LOG_CLEANUP_DRY_RUN,
-    });
-    this.retentionDays = config.LOG_RETENTION_DAYS;
-    this.dryRun = config.LOG_CLEANUP_DRY_RUN;
+    this.retentionDays = parseRetentionDays(process.env.LOG_RETENTION_DAYS);
+    this.dryRun = process.env.LOG_CLEANUP_DRY_RUN === "true";
   }
 
   isWithinRetention(filename: string): boolean {

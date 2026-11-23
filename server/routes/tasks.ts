@@ -170,8 +170,8 @@ router.post(
 
     const draft = { ...input, crontabId: newCrontabId() } as Task;
     const r = await applyTask(draft, opts);
-    invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
+    invalidateCrontabCache();
     let task: Task;
     try {
       task = await storage.createTask({
@@ -217,8 +217,8 @@ router.patch(
       next.crontabId = jobForTask(doc, existing)?.id ?? newCrontabId();
     }
     const r = await applyTask(next, opts, existing);
-    invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
+    invalidateCrontabCache();
     const updated = await updateOr404(id, { ...v.data, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
     taskScheduler.sync(updated);
     res.json((await buildTaskViews([updated]))[0]);
@@ -237,8 +237,8 @@ router.delete(
     const keepLine = req.query.keepLine === "1";
     if (task.isSystemManaged !== false && !keepLine) {
       const r = await removeTask(task, opts);
-      invalidateCrontabCache();
       if (opts.dryRun) return res.json(preview(r));
+      invalidateCrontabCache();
     } else if (opts.dryRun) {
       return res.json({ dryRun: true, changed: false });
     }
@@ -274,8 +274,8 @@ async function moveRunner(req: Request, res: Response, task: Task, to: "cron" | 
   if (to === "pitasker") {
     if (task.cronSchedule.trim().toLowerCase() === "@reboot") return res.status(400).json({ message: "@reboot needs the crontab as runner" });
     const r = await removeTask(task, opts);
-    invalidateCrontabCache();
     if (opts.dryRun) return res.json(preview(r));
+    invalidateCrontabCache();
     const updated = await updateOr404(id, { isSystemManaged: false, crontabId: null, syncedToCrontab: false, crontabSyncedAt: null });
     taskScheduler.sync(updated);
     return res.json((await buildTaskViews([updated]))[0]);
@@ -291,8 +291,8 @@ async function moveRunner(req: Request, res: Response, task: Task, to: "cron" | 
     if (!opts.dryRun) taskScheduler.sync(task);
     throw e;
   }
-  invalidateCrontabCache();
   if (opts.dryRun) return res.json(preview(r));
+  invalidateCrontabCache();
   const updated = await updateOr404(id, { isSystemManaged: true, crontabId: r.crontabId, syncedToCrontab: true, crontabSyncedAt: new Date() });
   taskScheduler.sync(updated);
   return res.json((await buildTaskViews([updated]))[0]);

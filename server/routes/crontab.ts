@@ -66,7 +66,7 @@ router.post(
     const opts = writeOpts(req);
     const taskIds = Array.isArray(req.body?.taskIds) ? req.body.taskIds.map(Number).filter(Number.isInteger) : undefined;
     const r = await exportToCrontab({ ...opts, taskIds });
-    invalidateCrontabCache();
+    if (!opts.dryRun) invalidateCrontabCache();
     res.json({ dryRun: Boolean(opts.dryRun), changed: r.changed, written: r.written, before: r.before, after: r.after, hash: r.beforeHash, exported: r.exported, unchanged: r.unchanged, skipped: r.skipped, backup: r.backup });
   }),
 );
@@ -113,7 +113,7 @@ router.post(
     const text = readBackup(req.params.name);
     const opts = writeOpts(req);
     const r = await mutateCrontab(() => text, opts);
-    invalidateCrontabCache();
+    if (!opts.dryRun) invalidateCrontabCache();
     res.json({ dryRun: Boolean(opts.dryRun), changed: r.changed, written: r.written, before: r.before, after: r.after, hash: r.beforeHash, backup: r.backup });
   }),
 );

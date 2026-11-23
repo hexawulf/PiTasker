@@ -83,10 +83,10 @@ const RULES: Rule[] = [
     },
   },
   {
-    // curl-style -u / --user user:password
+    // curl-style -u / --user user:password (unquoted or quoted "user:password" / 'user:password')
     name: "cli-user-pass",
-    re: /(^|\s)(-u|--user)(\s+)([^\s:'"]+):("[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|]+)/g,
-    replace: (_m, pre, flag, sp, user) => `${pre}${flag}${sp}${user}:${REDACTED}`,
+    re: /(^|\s)(-u|--user)(\s+)(["']?)([^\s:'"]+):((?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s"';&|]+))\4/g,
+    replace: (_m, pre, flag, sp, quote, user) => `${pre}${flag}${sp}${quote}${user}:${REDACTED}${quote}`,
   },
   {
     // Well-known standalone API token prefixes (GitHub PAT, OpenAI/Anthropic sk-, Slack xox-)

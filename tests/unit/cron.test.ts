@@ -96,4 +96,13 @@ describe("nextRuns", () => {
     expect(runs[0].toISOString()).toBe("2026-10-25T00:30:00.000Z");
     expect(runs[1].toISOString()).toBe("2026-10-26T01:30:00.000Z");
   });
+
+  it("does not skip 00:xx runs the day after a spring-forward DST day (Europe/Berlin, 2026-03-29)", () => {
+    // 2026-03-29 is Sunday (23 h DST spring-forward day). Monday 2026-03-30 00:30 CEST = 2026-03-29T22:30Z.
+    const runs = nextRuns("30 0 * * 1", "Europe/Berlin", 2, new Date("2026-03-28T22:30:00Z"));
+    expect(runs.map((d) => d.toISOString())).toEqual([
+      "2026-03-29T22:30:00.000Z",
+      "2026-04-05T22:30:00.000Z",
+    ]);
+  });
 });

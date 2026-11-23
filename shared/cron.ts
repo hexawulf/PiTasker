@@ -187,7 +187,17 @@ export function nextRuns(expr: string, tz: string, count = 3, from: Date = new D
   for (let guard = 0; guard < 200_000 && out.length < count; guard++) {
     const w = wallClock(new Date(t), tz);
     if (!f[3].values.has(w.month) || !dayMatches(f, w)) {
-      t += ((24 - w.hour) * 60 - w.minute) * MIN; // next local midnight
+      const prevDay = `${w.year}-${w.month}-${w.day}`;
+      t += ((24 - w.hour) * 60 - w.minute) * MIN; // next local midnight (nominal)
+      // On a spring-forward DST day (23 h), +24 h lands at 01:00 on the next day; step back to 00:00.
+      let nw = wallClock(new Date(t), tz);
+      while (`${nw.year}-${nw.month}-${nw.day}` !== prevDay && (nw.hour > 0 || nw.minute > 0)) {
+        const candidate = t - (nw.hour * 60 + nw.minute) * MIN;
+        const cw = wallClock(new Date(candidate), tz);
+        if (`${cw.year}-${cw.month}-${cw.day}` === prevDay) break;
+        t = candidate;
+        nw = cw;
+      }
       continue;
     }
     if (!f[1].values.has(w.hour)) {

@@ -37,9 +37,17 @@ export function resolveSafeLogPath(name: string, logDir = getLogDir()): string |
 }
 
 router.get("/", (_req, res) => {
-  fs.readdir(getLogDir(), (err, files) => {
-    if (err) return res.status(500).json({ message: "Cannot list logs" });
-    res.json(files.filter(isValidLog).filter((f) => logRetentionService.isWithinRetention(f)));
+  const dir = getLogDir();
+  fs.readdir(dir, (err, files) => {
+    if (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return res.json([]);
+      return res.status(500).json({ message: "Cannot list logs" });
+    }
+    res.json(
+      files
+        .filter((f) => resolveSafeLogPath(f, dir) !== null)
+        .filter((f) => logRetentionService.isWithinRetention(f)),
+    );
   });
 });
 

@@ -38,6 +38,8 @@ describe("redactLine: secrets are replaced", () => {
     ["mytool --password supersecret --host localhost", `mytool --password ${R} --host localhost`],
     ["cli --api-key 'sk-12345' run", `cli --api-key '${R}' run`],
     ["curl -u admin:hunter2 https://example.org", `curl -u admin:${R} https://example.org`],
+    ['curl -u "alice:secret!" https://example.org', `curl -u "alice:${R}" https://example.org`],
+    ["curl --user 'bob:s3cr3t' https://example.org", `curl --user 'bob:${R}' https://example.org`],
     ["echo ghp_0123456789abcdefghij0123456789abcdef", `echo ${R}`],
     ["echo sk-ant-api03-0123456789abcdefghij012345", `echo ${R}`],
     ["SLACK_WEBHOOK=https://hooks.slack.com/services/T1/B2/X3 notify", `SLACK_WEBHOOK=${R} notify`],

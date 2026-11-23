@@ -170,8 +170,9 @@ export function createFleetHub(o: FleetHubOptions) {
     save(h.id, snap);
     const hubMajor = major(o.hubVersion);
     const agentMajor = major(snap.agentVersion);
+    const generatedMs = Date.parse(snap.generatedAt);
     if (hubMajor && agentMajor && hubMajor !== agentMajor) s.status = "version-mismatch";
-    else if (now() - Date.parse(snap.generatedAt) > staleMs) s.status = "stale";
+    else if (Number.isNaN(generatedMs) || now() - generatedMs > staleMs) s.status = "stale";
     else s.status = "online";
   }
 

@@ -28,7 +28,7 @@ if (!secret) fatal("SESSION_SECRET is not set (.env). Generate one: openssl rand
 if (secret.length < 16) fatal("SESSION_SECRET is too short (min 16 characters; use openssl rand -hex 32)");
 if (secret.length < 32) console.warn("[server] SESSION_SECRET is shorter than 32 characters; consider openssl rand -hex 32");
 const PORT = Number(process.env.PORT);
-if (!PORT) fatal("PORT is not set (.env)");
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) fatal("PORT must be an integer between 1 and 65535 (.env)");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -59,7 +59,21 @@ async function main() {
   if (!staticDir) console.warn("[server] no frontend build found (npm run build)");
   const app = createApp({ sessionStore: new PgSession({ pool, pruneSessionInterval: 60 * 60 }), staticDir });
   const host = process.env.HOST || "0.0.0.0";
-  app.listen(PORT, host, () => console.log(`[express] PiTasker ${version} on ${host}:${PORT}`));
+  const server = app.listen(PORT, host, () => console.log(`[express] PiTasker ${version} on ${host}:${PORT}`));
+
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[server] ${signal} received; shutting down`);
+    taskScheduler.stopAll();
+    server.close(() => {
+      void pool.end().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 7_000).unref();
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((err) => {
