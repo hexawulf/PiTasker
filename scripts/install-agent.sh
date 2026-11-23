@@ -154,7 +154,12 @@ render() {
 }
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pitasker-agent-install.XXXXXX")"
-trap 'rm -rf "$TMP_DIR"' EXIT
+cleanup() {
+  rm -rf "$TMP_DIR"
+  exec 1>&3 2>&3 3>&-
+  wait 2>/dev/null || true
+}
+trap cleanup EXIT
 RUN_USER="$(id -un)"
 RUN_GROUP="$(id -gn)"
 RUN_UID="$(id -u)"
@@ -183,12 +188,16 @@ preflight() {
   have systemctl || die "systemctl not found: the agent runs under systemd"
   ok "systemd"
   if [ -n "$BIND" ]; then
-    if have ip && ip -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep -qxF "$BIND"; then ok "$BIND is an address of this host"
+    local addrs=""
+    if have ip; then addrs="$(ip -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 || true)"; fi
+    if [ -n "$addrs" ] && grep -qxF "$BIND" <<< "$addrs"; then ok "$BIND is an address of this host"
     else die "$BIND is not an address of this host (is the tunnel up? ip -o addr)"; fi
   fi
   if [ -n "$BUNDLE" ]; then
     [ -f "$BUNDLE" ] || die "--bundle $BUNDLE: no such file"
-    head -c 200 "$BUNDLE" | grep -q "PiTasker agent" || die "--bundle $BUNDLE doesn't look like dist/agent.mjs"
+    local bundle_hdr=""
+    bundle_hdr="$(head -c 200 "$BUNDLE")"
+    grep -q "PiTasker agent" <<< "$bundle_hdr" || die "--bundle $BUNDLE doesn't look like dist/agent.mjs"
     node --check "$BUNDLE" 2>/dev/null || die "--bundle $BUNDLE: node --check failed"
     ok "bundle $(head -n 1 "$BUNDLE" | sed 's#^// ##; s# — built.*##')"
   fi
@@ -211,7 +220,7 @@ TOKEN=""
 write_env() {
   step ".env (0600)"
   local env="$AGENT_DIR/.env" hash=""
-  [ -f "$env" ] && hash="$(sed -n 's/^PITASKER_AGENT_TOKEN_SHA256=//p' "$env" | head -n 1)"
+  [ -f "$env" ] && hash="$(awk -F= '$1=="PITASKER_AGENT_TOKEN_SHA256"{print $2; exit}' "$env")"
   if ! [[ "$hash" =~ ^[0-9a-f]{64}$ ]]; then
     if [ "$DRY_RUN" = 1 ]; then dry "generate a token (32 random bytes), keep only its SHA-256 in .env, the token in $TOKEN_FILE (0600)"; hash="(sha256 of a new token)"
     else
