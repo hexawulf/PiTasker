@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ListTodo, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,9 @@ export default function LoginPage() {
             <ListTodo className="h-5 w-5 text-pi-on-accent" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-bold">PiTasker</h1>
+            <h1 className="text-xl font-bold">
+              <Link href="/" className="hover:underline">PiTasker</Link>
+            </h1>
             <p className="text-sm text-pi-text-muted">Sign in to manage cron</p>
           </div>
         </div>
