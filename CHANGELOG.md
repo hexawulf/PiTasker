@@ -3,6 +3,24 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.3.2] — 2026-11-23 (teal palette & audit cleanup)
+
+### Changed
+- **Teal brand palette**: migrated UI accent tokens, logo tile, and favicon from blue to canonical teal (`#0D9488` / `#0F766E` / `#2DD4BF`); updated focus rings (`--ring`), native checkbox/radio `accent-color`, and crontab managed-line caption (`"Lines with a teal edge"`).
+- **UI & mobile polish**: restored WCAG-AA outlined semantic status pills (`ok`, `exit N`, `timeout`, `disabled`, `conflict`) that were previously unstyled; added semantic error/warning left-border accents on failing task cards; tightened Fleet `All jobs` table widths so right-edge `Hints` pills no longer clip at `1440px`; aligned `AboutModal` surface, mobile width, scroll cap, and accent links; compacted and auto-scrolled the `390px` mobile tab bar and aligned `TaskCard` runner badges; lightened dark-mode Google sign-in button surface.
+- **Dependencies**: bumped `lucide-react` to `^1.76.0` (Dependabot PR #35) and removed the orphaned `@grpc/grpc-js` npm override (`0` vulnerabilities).
+- **Docs**: fixed stale API route, CSS path, and layout entries in `AGENTS.md` and `README.md`, and moved misplaced JSDoc in `server/services/exec.ts`.
+
+### Fixed
+- **Server & scheduler**: fixed `LOG_RETENTION_DAYS` fallback on empty/invalid values (no longer crashes at import); fixed DST spring-forward bug in `nextRuns()` skipping `00:xx` runs after a 23h day; guarded crontab cache with a monotonic generation counter against stale pre-write reads; skipped redundant cache invalidation on `?dryRun=1`; validated `PORT` (`1..65535`) and added graceful `SIGTERM`/`SIGINT` shutdown; filtered `GET /api/pitasker-logs` via `resolveSafeLogPath()` with `[]` on `ENOENT`; checked `getApps()` before reading Firebase credentials; loaded `.env` in `drizzle.config.ts`.
+- **Fleet & installer**: redacted quoted `curl -u "user:pass"` / `'user:pass'` arguments; marked `NaN` `generatedAt` timestamps as `"stale"`; used `os.userInfo().homedir` in the test-mode `PITASKER_BIN_DIR` guard; fixed intermittent `set -o pipefail` SIGPIPE (141) and `exec > >(tee)` exit flush race in `scripts/install-agent.sh`.
+
+### Removed
+- Dead API routes (`GET /api/tasks/stats`, `GET /api/crontab/check-access`), unused `insertTaskSchema`/`updateTaskSchema` aliases, dead `client/dist` static fallback, four unused `--pi-chart-*` CSS tokens, and duplicate `.gitignore` entries.
+
+### Rollout
+Pull `main`, run `npm ci && npm run build`, `pm2 restart pitasker`, and verify `/healthz` and the About version (`v2.3.2`). Existing Fleet agents remain compatible; an optional agent update picks up quoted `curl -u` redaction.
+
 ## [2.3.1] — 2026-11-22 (dependency updates)
 
 ### Changed
