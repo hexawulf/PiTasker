@@ -172,12 +172,12 @@ server/routes/     API routes; http.ts holds the shared handler helpers
 server/crontab/    document.ts (line-preserving parser/editor), store.ts (crontab IO,
                    backups, read-back), sync.ts (tasks ⇄ crontab), cache.ts
 server/services/   exec.ts, taskRunner.ts, taskScheduler.ts, cronSeen.ts, scriptCheck.ts,
-                   firebase-auth.ts
+                   firebase-auth.ts, logRetentionService.ts
 server/fleet/      collector.ts (one host's snapshot), hub.ts (agents, saved snapshots),
-                   hints.ts, redact.ts, tools.ts (execFile, test guards)
+                   hosts.ts, hints.ts, redact.ts, tools.ts (execFile, test guards)
 server/agent/      the agent → dist/agent.mjs; deploy/ holds its systemd units
 shared/            cron.ts (validation, descriptions, next runs), schema.ts (tables),
-                   fleet.ts (snapshot schema)
+                   fleet.ts (snapshot schema), fleet-view.ts (source labels & keys)
 migrations/        drizzle SQL; scripts/migrate*.mjs apply them
 tests/             unit/ (vitest), e2e/ (Playwright), install/, fakes/, fixtures/
 docs/plans/        the 2.0 plan and the 2.1 fleet-view design record

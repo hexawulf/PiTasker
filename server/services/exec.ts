@@ -65,7 +65,6 @@ export function crontabEnvVars(lines: { kind: string; raw: string }[]): Record<s
   return out;
 }
 
-/** What cron gives a job: no PiTasker secrets (SESSION_SECRET, DATABASE_URL …) ever reach it. */
 /**
  * A job's stdin as a real file (the % text), never a socket. Node's "pipe"
  * is a socketpair, and bash takes a socket on stdin for sshd and sources
@@ -82,6 +81,7 @@ function stdinFile(text: string): number {
   }
 }
 
+/** What cron gives a job: no PiTasker secrets (SESSION_SECRET, DATABASE_URL …) ever reach it. */
 export function jobEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {
     HOME: env.HOME || os.homedir(),

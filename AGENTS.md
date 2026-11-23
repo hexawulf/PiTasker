@@ -9,9 +9,11 @@ every change.
 ```bash
 npm ci
 npm run check                      # tsc (must pass)
+npm run lint                       # eslint
 npm run check:theme                # UI colours only from --pi-* tokens
 PITASKER_TEST_PG_URL=postgres://postgres:…@127.0.0.1:5432/postgres npm test
 PITASKER_TEST_PG_URL=… npm run test:e2e     # PW_CHROMIUM=/path/to/chrome if browsers aren't installed
+PITASKER_TEST_PG_URL=… npm run screenshots  # refresh README screenshots from demo data
 npm run build                      # client + server + dist/agent.mjs
 npm run test:install               # installer tests (stubs; no root)
 npm run check:shell                # shellcheck
@@ -36,7 +38,7 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
   `server/routes/tasks.ts` (header comment) so a failed crontab write
   never leaves a task running twice or not at all.
 - **Every `/api` route needs `isAuthenticated`** except `POST /api/auth/login`,
-  `POST /api/auth/firebase`, and `GET /api/auth/config`;
+  `POST /api/auth/firebase-login`, and `GET /api/auth/config`;
   `tests/unit/route-auth.test.ts` fails otherwise. State-changing requests
   are JSON (`sameOrigin`).
 - **The fleet view is read-only (P3).** The agent (`server/agent/`) has
@@ -51,8 +53,8 @@ npm run db:migrate | db:status     # never `drizzle-kit push` against a real dat
 - Jobs run with `jobEnv()` — never pass `process.env` (secrets) to them.
 - Schema changes: edit `shared/schema.ts`, `npm run db:generate`, commit
   the SQL + snapshot; never edit an applied migration.
-- UI: PiDeck 2.0 design language — tokens in `client/src/themes/pitasker-theme.css`
-  (imported by `client/src/index.css`), primitives in `components/ui`,
+- UI: PiDeck 2.0 design language — tokens in `client/src/index.css`,
+  primitives in `components/ui`,
   `ConfirmDialog` for anything destructive, the diff dialog (`useCrontabWrite`)
   for anything that writes the crontab. Keep 390 px free of horizontal scroll
   and axe clean (E2E checks both).
