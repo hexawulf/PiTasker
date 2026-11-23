@@ -56,23 +56,9 @@ export class LogRetentionService {
         scanned++;
 
         if (!this.isWithinRetention(file)) {
-          const filePath = path.join(logDir, file);
-          const resolvedPath = path.resolve(filePath);
-          
-          // Safety: ensure resolvedPath is strictly within logDir
-          const resolvedLogDir = path.resolve(logDir);
-          if (!resolvedPath.startsWith(resolvedLogDir + path.sep)) {
-            console.warn(`[LOG-CLEANUP] Security alert: attempted to delete file outside log dir: ${resolvedPath}`);
-            continue;
-          }
-
-          if (this.dryRun) {
-            console.log(`[LOG-CLEANUP] [DRY-RUN] Would delete: ${file}`);
-            deletedCount++;
-          } else {
-            await fs.promises.unlink(filePath);
-            deletedCount++;
-          }
+          if (this.dryRun) console.log(`[LOG-CLEANUP] [DRY-RUN] Would delete: ${file}`);
+          else await fs.promises.unlink(path.join(logDir, file));
+          deletedCount++;
         }
       }
 
@@ -83,14 +69,8 @@ export class LogRetentionService {
   }
 
   startScheduledCleanup(): void {
-    // Run on startup
-    this.cleanup().catch(err => console.error('[LOG-CLEANUP] Startup cleanup failed:', err));
-
-    // Run every 24 hours
-    const timer = setInterval(() => {
-      this.cleanup().catch(err => console.error('[LOG-CLEANUP] Interval cleanup failed:', err));
-    }, 24 * 60 * 60 * 1000);
-    timer.unref();
+    void this.cleanup();
+    setInterval(() => void this.cleanup(), 24 * 60 * 60 * 1000).unref();
   }
 }
 
