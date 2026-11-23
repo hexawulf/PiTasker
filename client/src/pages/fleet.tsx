@@ -122,33 +122,33 @@ function JobsTable({ rows, hubTz }: { rows: Row[]; hubTz: string }) {
           <caption className="sr-only">All scheduled jobs</caption>
           <thead className="border-b border-pi-border text-xs uppercase tracking-wide text-pi-text-muted">
             <tr>
-              <th scope="col" className="px-3 py-2">Host</th>
-              <th scope="col" className="px-3 py-2">Source</th>
-              <th scope="col" className="px-3 py-2">Schedule</th>
-              <th scope="col" className="px-3 py-2">Next run</th>
-              <th scope="col" className="px-3 py-2">Last run</th>
-              <th scope="col" className="px-3 py-2">Command</th>
-              <th scope="col" className="px-3 py-2">Hints</th>
+              <th scope="col" className="px-2.5 py-2">Host</th>
+              <th scope="col" className="px-2.5 py-2">Source</th>
+              <th scope="col" className="px-2.5 py-2">Schedule</th>
+              <th scope="col" className="px-2.5 py-2">Next run</th>
+              <th scope="col" className="px-2.5 py-2">Last run</th>
+              <th scope="col" className="px-2.5 py-2">Command</th>
+              <th scope="col" className="px-2.5 py-2">Hints</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className={cn("border-b border-pi-border align-top last:border-0", (r.disabled || r.hostDown) && "bg-pi-darker text-pi-text-muted")} data-testid="fleet-table-row">
-                <td className="whitespace-nowrap px-3 py-2 font-medium">{r.hostLabel}</td>
-                <td className="px-3 py-2 text-pi-text-muted">
+                <td className="whitespace-nowrap px-2.5 py-2 font-medium">{r.hostLabel}</td>
+                <td className="px-2.5 py-2 text-xs text-pi-text-muted">
                   {r.source}
                   {r.user ? ` · ${r.user}` : ""}
                 </td>
-                <td className={cn("px-3 py-2", r.disabled && "line-through")} title={r.scheduleRaw}>
+                <td className={cn("px-2.5 py-2 text-xs", r.disabled && "line-through")} title={r.scheduleRaw}>
                   {r.schedule}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">
+                <td className="whitespace-nowrap px-2.5 py-2 text-xs">
                   <NextRun row={r} hubTz={hubTz} />
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">
+                <td className="whitespace-nowrap px-2.5 py-2 text-xs">
                   <LastRun row={r} />
                 </td>
-                <td className="min-w-[18rem] px-3 py-2">
+                <td className="min-w-[12rem] max-w-[20rem] px-2.5 py-2">
                   <code className="break-all font-mono text-xs">{r.command}</code>
                   {r.editableHere && (
                     <Link href="/crontab" className="ml-2 text-xs text-pi-accent-text underline-offset-2 hover:underline">
@@ -156,7 +156,7 @@ function JobsTable({ rows, hubTz }: { rows: Row[]; hubTz: string }) {
                     </Link>
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2.5 py-2">
                   <div className="flex flex-wrap gap-1">
                     <HintBadges hints={r.hints} />
                   </div>

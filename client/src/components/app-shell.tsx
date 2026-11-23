@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ComponentType } from "react";
+import { lazy, Suspense, useEffect, useRef, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { FileText, Globe, Keyboard, ListChecks, ListTodo, LogOut, RefreshCw, SettingsIcon, TerminalSquare } from "lucide-react";
@@ -50,9 +50,11 @@ export default function AppShell({ tab }: { tab: string }) {
   const openHelp = useOpenShortcutHelp();
   const current = TABS.find((t) => t.id === tab) ?? TABS[0];
   const Page = current.component;
+  const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     document.title = current.id === "tasks" ? "PiTasker" : `${current.label} · PiTasker`;
+    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [current]);
 
   return (
@@ -105,10 +107,10 @@ export default function AppShell({ tab }: { tab: string }) {
 
       <main id="main" className="pt-4 sm:pt-8">
         <div className="mx-auto max-w-7xl px-4">
-          <nav aria-label="Sections" className="mb-6 flex space-x-1 overflow-x-auto rounded-xl bg-pi-card p-1">
+          <nav ref={navRef} aria-label="Sections" className="mb-6 flex space-x-1 overflow-x-auto rounded-xl bg-pi-card p-1">
             {TABS.map(({ id, label, icon: Icon }) => (
-              <Link key={id} href={`/${id}`} aria-current={id === current.id ? "page" : undefined} className={cn("tab-button flex items-center space-x-2", id === current.id && "active")}>
-                <Icon className="h-4 w-4" aria-hidden />
+              <Link key={id} href={`/${id}`} aria-current={id === current.id ? "page" : undefined} className={cn("tab-button flex shrink-0 items-center space-x-1.5 whitespace-nowrap px-2.5 py-1.5 text-xs sm:space-x-2 sm:px-4 sm:py-2 sm:text-sm", id === current.id && "active")}>
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />
                 <span>{label}</span>
               </Link>
             ))}

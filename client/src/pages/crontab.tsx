@@ -128,7 +128,18 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{i.name}</span>
-                      <span className={cn("rounded-full px-2 text-xs", i.action === "conflict" ? "status-offline" : i.action === "disabled" ? "status-restart" : can ? "status-online" : "bg-pi-darker text-pi-text-muted")}>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium",
+                          i.action === "conflict"
+                            ? "border border-pi-error text-pi-error"
+                            : i.action === "disabled"
+                              ? "border border-pi-warning text-pi-warning"
+                              : can
+                                ? "border border-pi-success text-pi-success"
+                                : "bg-pi-darker text-pi-text-muted",
+                        )}
+                      >
                         {label[i.action]}
                       </span>
                     </span>
@@ -280,7 +291,7 @@ export default function CrontabPage() {
           {crontab.isError && <p className="text-pi-error">Cannot read the crontab: {(crontab.error as Error).message}</p>}
           {crontab.data && <CrontabLines lines={crontab.data.lines} />}
           <p className="mt-2 text-xs text-pi-text-muted">
-            Lines with a blue edge are managed by PiTasker (<code># PITASKER_ID</code> markers). Everything else is shown and kept exactly as written.
+            Lines with a teal edge are managed by PiTasker (<code># PITASKER_ID</code> markers). Everything else is shown and kept exactly as written.
           </p>
         </div>
         <BackupsCard />

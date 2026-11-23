@@ -70,7 +70,7 @@ export default function AboutModal() {
         </TooltipTrigger>
         <TooltipContent>About PiTasker</TooltipContent>
       </Tooltip>
-      <DialogContent className="p-6 sm:rounded-xl" data-testid="about-dialog">
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto border-pi-border bg-pi-card p-4 text-pi-text sm:rounded-xl sm:p-6" data-testid="about-dialog">
         <DialogHeader>
           <DialogTitle>About PiTasker</DialogTitle>
         </DialogHeader>
@@ -94,12 +94,12 @@ export default function AboutModal() {
             <h2 className="mb-1 font-bold">Developer</h2>
             <p>
               Erling Wulf Weinreich (0xWulf) ·{" "}
-              <a href="mailto:dev@0xwulf.dev" className="underline">dev@0xwulf.dev</a>
+              <a href="mailto:dev@0xwulf.dev" className="text-pi-accent-text underline underline-offset-2 hover:opacity-80">dev@0xwulf.dev</a>
             </p>
           </div>
           <div>
             <h2 className="mb-1 font-bold">GitHub Repo</h2>
-            <a href={REPO} className="break-all underline" target="_blank" rel="noopener noreferrer">
+            <a href={REPO} className="break-all text-pi-accent-text underline underline-offset-2 hover:opacity-80" target="_blank" rel="noopener noreferrer">
               {REPO}
             </a>
           </div>

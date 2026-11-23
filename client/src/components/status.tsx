@@ -8,31 +8,31 @@ export function RunStatusBadge({ status, exitCode }: { status: string; exitCode?
   switch (status) {
     case "success":
       return (
-        <span className={cn(pill, "status-online")}>
+        <span className={cn(pill, "border border-pi-success text-pi-success")}>
           <CheckCircle2 className="h-3 w-3" aria-hidden /> ok
         </span>
       );
     case "running":
       return (
-        <span className={cn(pill, "bg-pi-darker text-pi-accent-text")}>
+        <span className={cn(pill, "border border-pi-accent bg-pi-darker text-pi-accent-text")}>
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> running
         </span>
       );
     case "timeout":
       return (
-        <span className={cn(pill, "status-restart")}>
+        <span className={cn(pill, "border border-pi-warning text-pi-warning")}>
           <Clock className="h-3 w-3" aria-hidden /> timeout
         </span>
       );
     case "interrupted":
       return (
-        <span className={cn(pill, "status-restart")}>
+        <span className={cn(pill, "border border-pi-warning text-pi-warning")}>
           <CircleSlash className="h-3 w-3" aria-hidden /> interrupted
         </span>
       );
     default:
       return (
-        <span className={cn(pill, "status-offline")}>
+        <span className={cn(pill, "border border-pi-error text-pi-error")}>
           <XCircle className="h-3 w-3" aria-hidden /> {exitCode !== null && exitCode !== undefined ? `exit ${exitCode}` : "failed"}
         </span>
       );

@@ -39,7 +39,7 @@
   --accent-foreground: hsl(24, 9.8%, 10%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
+  --ring: #0d9488;
   --radius: 0.5rem;
 
   /* PiDeck 2.0 palette (shared with PiDeck: same tokens, same values) — light */
@@ -62,10 +62,6 @@
   --pi-success-soft: hsl(141, 84%, 93%);  /*                   (green-100) */
   --pi-warning-soft: hsl(48, 96%, 89%);   /*                   (amber-100) */
   --pi-error-soft: hsl(0, 93%, 94%);      /*                   (red-100)   */
-  --pi-chart-1: hsl(243, 75%, 59%);       /* disk read    (indigo-600)  */
-  --pi-chart-2: hsl(142, 76%, 36%);       /* disk write   (green-600)   */
-  --pi-chart-3: hsl(221, 83%, 53%);       /* net received (blue-600)    */
-  --pi-chart-4: hsl(161, 94%, 30%);       /* net sent     (emerald-600) */
   --pi-terminal-bg: hsl(0, 0%, 0%);
   --pi-terminal-text: hsl(220, 14%, 96%);
   --pi-terminal-muted: hsl(218, 11%, 65%);
@@ -92,7 +88,7 @@
   --accent-foreground: hsl(210, 40%, 98%);
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(210, 40%, 98%);
-  --ring: hsl(215, 20%, 65%);
+  --ring: #2dd4bf;
 
   /* PiDeck 2.0 palette (shared with PiDeck: same tokens, same values) — dark (unchanged from 1.x; status = the former -400 shades) */
   --pi-dark: hsl(222, 84%, 5%);
@@ -114,10 +110,6 @@
   --pi-success-soft: hsla(142, 69%, 58%, 0.2);
   --pi-warning-soft: hsla(50, 98%, 64%, 0.2);
   --pi-error-soft: hsla(0, 91%, 71%, 0.2);
-  --pi-chart-1: hsl(242, 51%, 68%);
-  --pi-chart-2: hsl(144, 42%, 65%);
-  --pi-chart-3: hsl(217, 91%, 60%);
-  --pi-chart-4: hsl(160, 84%, 39%);
   --pi-terminal-bg: hsl(0, 0%, 0%);
   --pi-terminal-text: hsl(220, 14%, 96%);
   --pi-terminal-muted: hsl(218, 11%, 65%);
@@ -130,6 +122,11 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--pi-accent);
   }
 }
 

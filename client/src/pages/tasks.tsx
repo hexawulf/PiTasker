@@ -86,22 +86,31 @@ function TaskCard({
 }) {
   const runs = useMemo(() => nextRuns(task.cronSchedule, tz, 3), [task.cronSchedule, tz]);
   const running = task.lastRunInfo?.status === "running";
+  const failing = task.lastRunInfo?.status === "failed" || task.lastRunInfo?.status === "timeout";
+  const warn = task.cronState === "missing" || task.cronState === "disabled";
   return (
-    <li className="min-w-0 rounded-xl border border-pi-border bg-pi-card p-4 shadow-sm" data-testid="task-card" data-task-id={task.id}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="truncate font-semibold" title={task.name}>
-            {task.name}
-          </h3>
-          <p className="mt-0.5 text-sm">
-            <span className="font-medium">{describeCron(task.cronSchedule)}</span>{" "}
-            <span className="text-pi-text-muted">
-              {tz} · <code className="text-xs">{task.cronSchedule}</code>
-            </span>
-          </p>
+    <li
+      className={cn(
+        "min-w-0 rounded-xl border border-pi-border bg-pi-card p-4 shadow-sm",
+        failing ? "border-l-4 border-l-pi-error" : warn && "border-l-4 border-l-pi-warning",
+      )}
+      data-testid="task-card"
+      data-task-id={task.id}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="min-w-0 truncate font-semibold" title={task.name}>
+          {task.name}
+        </h3>
+        <div className="shrink-0">
+          <RunnerBadge task={task} />
         </div>
-        <RunnerBadge task={task} />
       </div>
+      <p className="mt-0.5 text-sm">
+        <span className="font-medium">{describeCron(task.cronSchedule)}</span>{" "}
+        <span className="text-pi-text-muted">
+          {tz} · <code className="text-xs">{task.cronSchedule}</code>
+        </span>
+      </p>
       <code className="mt-2 block truncate rounded bg-pi-darker px-2 py-1 font-mono text-xs" title={task.command}>
         {task.command}
       </code>

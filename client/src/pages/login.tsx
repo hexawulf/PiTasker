@@ -120,7 +120,7 @@ export default function LoginPage() {
               variant="outline"
               onClick={handleGoogleLogin}
               disabled={isBusy}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 border-pi-border bg-pi-input hover:bg-pi-card text-pi-text transition-colors duration-200"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 border-pi-border bg-transparent hover:bg-pi-card-hover text-pi-text transition-colors duration-200"
               data-testid="google-login-button"
             >
               {isGoogleSigningIn || isFirebaseLoginPending ? (
