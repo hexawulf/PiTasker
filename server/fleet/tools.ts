@@ -44,7 +44,7 @@ export function fleetPaths(env: NodeJS.ProcessEnv = process.env): FleetPaths {
     const real = [
       ["PITASKER_ETC_DIR", p.etcDir, (v: string) => path.resolve(v) === "/etc"],
       // The real bin dir only (a checkout under /home/zk must still be able to run the E2E fixtures).
-      ["PITASKER_BIN_DIR", p.binDir, (v: string) => within(v, path.join(os.homedir(), "bin"))],
+      ["PITASKER_BIN_DIR", p.binDir, (v: string) => within(v, path.join(os.userInfo().homedir, "bin"))],
       ["PITASKER_ROOT_CRON_SNAPSHOT", p.rootSnapshot, (v: string) => within(v, "/var/lib/pitasker")],
     ] as const;
     for (const [name, value, isReal] of real) {
