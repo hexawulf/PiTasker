@@ -40,6 +40,8 @@ everything that is scheduled on the other hosts of a small fleet.
   hosts*, *script not in bin.git*, *bin replica differs*, *disabled*.
 - **Sign-in**: Google (Firebase Auth) limited to an email allowlist, with a
   local username/password kept as the break-glass fallback.
+- **Public landing page** on `/` for signed-out visitors (what PiTasker does,
+  a demo preview and a Sign in button); signed-in users go straight to Tasks.
 - **UI**: light and dark themes, works at 390 px, keyboard shortcuts
   (`?` lists them), axe-checked pages, and an About dialog with a one-line
   diagnostics string for bug reports.
