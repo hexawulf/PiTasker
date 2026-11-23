@@ -3,6 +3,19 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.4.0] — 2026-11-23 (public landing page)
+
+### Added
+- **Public landing page on `/`** for signed-out visitors: what PiTasker does (six feature cards from the README), a task list and crontab diff preview drawn with `--pi-*` tokens and demo jobs (no images, so it follows light/dark and never shows a real crontab), the quick-start commands and a teal **Sign in** button. Lazy chunk (~4 KB gzip), same-origin only.
+- The PiTasker title on the login page links back to `/`; the landing footer shows the version (Vite `define`, no API call: every `/api` route needs a session).
+
+### Changed
+- Signed out, only `/` and `/login` render; every other path (a deep link) still goes to `/login`. Signed in, `/` still goes to `/tasks`.
+- E2E: `auth.setup.ts` starts from a deep link (`/tasks` → `/login`) instead of `/`; new `tests/e2e/landing.spec.ts` (same-origin, CSP, console, axe in both themes, 390 px, routing).
+
+### Rollout
+Pull `main`, run `npm ci && npm run build`, `pm2 restart pitasker`, and verify `/healthz`, the landing page on `/` when signed out, and the About version (`v2.4.0`).
+
 ## [2.3.2] — 2026-11-23 (teal palette & audit cleanup)
 
 ### Changed

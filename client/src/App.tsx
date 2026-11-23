@@ -11,6 +11,8 @@ import { queryClient } from "@/lib/api";
 import { ShortcutsProvider } from "@/shortcuts/use-shortcuts";
 
 const LoginPage = lazy(() => import("@/pages/login"));
+// Public landing page for signed-out visitors on "/" (own chunk: signed-in users never load it).
+const LandingPage = lazy(() => import("@/pages/landing"));
 
 function Routes() {
   const { user, isLoading } = useAuth();
@@ -19,7 +21,9 @@ function Routes() {
     return (
       <Suspense fallback={<div className="min-h-screen bg-pi-dark" aria-busy="true" />}>
         <Switch>
+          <Route path="/" component={LandingPage} />
           <Route path="/login" component={LoginPage} />
+          {/* Any other signed-out path (a deep link) goes to the login page. */}
           <Route>
             <Redirect to="/login" />
           </Route>

@@ -2,7 +2,8 @@ import { test as setup, expect } from "@playwright/test";
 import { password } from "./helpers";
 
 setup("log in", async ({ page }) => {
-  await page.goto("/");
+  // "/" is the public landing page since 2.4.0; deep links still go to /login.
+  await page.goto("/tasks");
   await expect(page).toHaveURL(/\/login$/);
   await page.getByTestId("login-username").fill("admin");
   await page.getByTestId("login-password").fill("wrong-password");
