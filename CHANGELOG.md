@@ -3,6 +3,15 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.4.1] — 2026-11-24 (log retention: config + tests)
+
+### Changed
+- **Log settings go through `server/config.ts`** like every other setting: `LOG_DIR`, `LOG_RETENTION_DAYS` and `LOG_CLEANUP_DRY_RUN` are now `config.logDir`, `config.logRetentionDays` and `config.logCleanupDryRun`. Same values and defaults as before.
+- The default `LOG_DIR` and `PITASKER_BIN_DIR` are under the running user's home directory (`~/logs/pitasker`, `~/bin`) instead of a fixed `/home/zk` path. Installs that set them in `.env` are unchanged.
+
+### Added
+- Unit tests for log retention: the retention window (today included, 1-day edge, undated and impossible dates kept), dry run deletes nothing, a real run deletes only old dated `*.log` files, a symlink is removed without touching its target, a missing dir is skipped, and `cleanup()` never rejects. The path check and the `.catch()` handlers on the scheduled cleanup stay as defence in depth.
+
 ## [2.4.0] — 2026-11-23 (public landing page)
 
 ### Added

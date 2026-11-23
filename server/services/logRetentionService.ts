@@ -1,26 +1,36 @@
 import fs from "fs";
 import path from "path";
 
-export const getLogDir = () => process.env.LOG_DIR || "/home/zk/logs/pitasker";
+import { config } from "../config";
+
+export const getLogDir = () => config.logDir;
 export const LOG_PATTERN = /^([\w.-]+)-(\d{4}-\d{2}-\d{2})\.log$/;
 
-function parseRetentionDays(raw: string | undefined): number {
-  if (raw === undefined) return 7;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) {
-    console.warn(`[LOG-CLEANUP] Invalid LOG_RETENTION_DAYS "${raw}", falling back to 7`);
-    return 7;
-  }
-  return Math.floor(n) || 1;
+export interface LogRetentionOptions {
+  logDir?: string;
+  retentionDays?: number;
+  dryRun?: boolean;
+  /** Clock for "today" (tests). */
+  now?: () => Date;
+}
+
+export interface CleanupResult {
+  scanned: number;
+  deleted: number;
 }
 
 export class LogRetentionService {
-  private retentionDays: number;
-  private dryRun: boolean;
+  private readonly logDir: () => string;
+  private readonly retentionDays: number;
+  private readonly dryRun: boolean;
+  private readonly now: () => Date;
 
-  constructor() {
-    this.retentionDays = parseRetentionDays(process.env.LOG_RETENTION_DAYS);
-    this.dryRun = process.env.LOG_CLEANUP_DRY_RUN === "true";
+  /** Settings come from server/config.ts; options override them (tests). */
+  constructor(opts: LogRetentionOptions = {}) {
+    this.logDir = opts.logDir !== undefined ? () => opts.logDir as string : getLogDir;
+    this.retentionDays = opts.retentionDays ?? config.logRetentionDays;
+    this.dryRun = opts.dryRun ?? config.logCleanupDryRun;
+    this.now = opts.now ?? (() => new Date());
   }
 
   isWithinRetention(filename: string): boolean {
@@ -32,19 +42,19 @@ export class LogRetentionService {
     if (Number.isNaN(logDate.getTime()) || logDate.getMonth() !== m - 1) return true;
 
     // The last N calendar days including today (local time).
-    const now = new Date();
+    const now = this.now();
     const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (this.retentionDays - 1));
     return logDate >= cutoff;
   }
 
-  async cleanup(): Promise<void> {
-    const logDir = getLogDir();
+  async cleanup(): Promise<CleanupResult> {
+    const logDir = this.logDir();
     console.log(`[LOG-CLEANUP] Starting cleanup (dir: ${logDir}, retention: ${this.retentionDays} days, dry-run: ${this.dryRun})`);
     
     try {
       if (!fs.existsSync(logDir)) {
         console.warn(`[LOG-CLEANUP] Log directory ${logDir} does not exist. Skipping cleanup.`);
-        return;
+        return { scanned: 0, deleted: 0 };
       }
 
       const files = await fs.promises.readdir(logDir);
@@ -77,8 +87,10 @@ export class LogRetentionService {
       }
 
       console.log(`[LOG-CLEANUP] Cleanup finished. Scanned: ${scanned}, ${this.dryRun ? 'Would have deleted' : 'Deleted'}: ${deletedCount}`);
+      return { scanned, deleted: deletedCount };
     } catch (error) {
       console.error(`[LOG-CLEANUP] Error during cleanup:`, error);
+      return { scanned: 0, deleted: 0 };
     }
   }
 
