@@ -118,16 +118,4 @@ router.post(
   }),
 );
 
-router.get(
-  "/check-access",
-  wrap(async (_req, res) => {
-    try {
-      await readCrontab();
-      res.json({ hasAccess: true });
-    } catch (e) {
-      res.json({ hasAccess: false, error: (e as Error).message });
-    }
-  }),
-);
-
 export default router;

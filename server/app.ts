@@ -91,9 +91,9 @@ export function createApp(opts: AppOptions = {}): Express {
   return app;
 }
 
-/** dist/public next to the bundle, or client/dist for older layouts. */
+/** dist/public next to the bundle. */
 export function findStaticDir(baseDir: string): string | null {
   const root = path.resolve(baseDir, "..");
-  const candidates = [path.join(baseDir, "public"), path.join(root, "dist", "public"), path.join(root, "client", "dist")];
+  const candidates = [path.join(baseDir, "public"), path.join(root, "dist", "public")];
   return candidates.find((d) => fs.existsSync(path.join(d, "index.html"))) ?? null;
 }

@@ -77,24 +77,6 @@ router.get(
 );
 
 router.get(
-  "/api/tasks/stats",
-  wrap(async (_req, res) => {
-    const tasks = await storage.getAllTasks();
-    const latest = await storage.latestRuns();
-    const last = (t: Task) => latest.get(t.id)?.status;
-    res.json({
-      totalTasks: tasks.length,
-      cronTasks: tasks.filter((t) => t.isSystemManaged !== false).length,
-      pitaskerTasks: tasks.filter((t) => t.isSystemManaged === false).length,
-      runningTasks: taskRunner.runningCount(),
-      scheduledTasks: taskScheduler.scheduledIds().length,
-      successfulTasks: tasks.filter((t) => last(t) === "success").length,
-      failedTasks: tasks.filter((t) => ["failed", "timeout"].includes(last(t) ?? "")).length,
-    });
-  }),
-);
-
-router.get(
   "/api/tasks/export",
   wrap(async (req, res) => {
     const tasks = await storage.getAllTasks();

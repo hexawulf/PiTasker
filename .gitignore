@@ -36,13 +36,11 @@ pids
 
 # OS generated files
 Thumbs.db
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-.env
 
 # Tests
 .e2e/
@@ -52,6 +50,5 @@ playwright-report/
 # test fixtures (fake journalctl output) are not logs
 !tests/fixtures/fleet/*/journal.log
 
-# Firebase Auth plan and credentials
-docs/plans/firebase-google-auth.md
+# Firebase Auth credentials
 *firebase-service-account*.json

@@ -116,11 +116,6 @@ export const taskPatchSchema = z
   .partial()
   .strict();
 
-/** Kept for existing imports: the create schema. */
-export const insertTaskSchema = taskInputSchema;
-/** Kept for existing imports: the edit schema. */
-export const updateTaskSchema = taskPatchSchema;
-
 export const insertUserSchema = z.object({ username: z.string().min(1), password: z.string().min(1) });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
