@@ -10,7 +10,7 @@ import type { NextFunction, Request, Response } from "express";
 //     host (Host or X-Forwarded-Host, as nginx passes it) or PITASKER_ORIGIN.
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 
-export function originAllowed(origin: string, req: Pick<Request, "headers">, publicOrigin = process.env.PITASKER_ORIGIN || "https://pitasker.piapps.dev"): boolean {
+export function originAllowed(origin: string, req: Pick<Request, "headers">, publicOrigin = process.env.PITASKER_ORIGIN || "https://pitasker.dev"): boolean {
   let o: URL;
   try {
     o = new URL(origin);
