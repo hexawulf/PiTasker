@@ -11,6 +11,7 @@ import { diagnosticsLine } from "@/lib/diagnostics";
 
 const RELEASE_DATE = "November 2026";
 const REPO = "https://github.com/hexawulf/PiTasker";
+const SITE = "https://pitasker.dev/";
 
 function Diagnostics() {
   const meta = useMeta().data;
@@ -96,6 +97,12 @@ export default function AboutModal() {
               Erling Wulf Weinreich (0xWulf) ·{" "}
               <a href="mailto:dev@0xwulf.dev" className="text-pi-accent-text underline underline-offset-2 hover:opacity-80">dev@0xwulf.dev</a>
             </p>
+          </div>
+          <div>
+            <h2 className="mb-1 font-bold">Website</h2>
+            <a href={SITE} className="text-pi-accent-text underline underline-offset-2 hover:opacity-80" target="_blank" rel="noopener noreferrer" data-testid="about-website">
+              pitasker.dev
+            </a>
           </div>
           <div>
             <h2 className="mb-1 font-bold">GitHub Repo</h2>
