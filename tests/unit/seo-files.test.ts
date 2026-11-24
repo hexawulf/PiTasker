@@ -10,8 +10,8 @@ import type { Server } from "http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app";
 
-const ROBOTS = "User-agent: *\nAllow: /\n\nSitemap: https://pitasker.piapps.dev/sitemap.xml\n";
-const SITEMAP_LOC = "https://pitasker.piapps.dev/";
+const ROBOTS = "User-agent: *\nAllow: /\n\nSitemap: https://pitasker.dev/sitemap.xml\n";
+const SITEMAP_LOC = "https://pitasker.dev/";
 const DESCRIPTION =
   "A web UI for the crontab on a Raspberry Pi or Linux server: see, edit and run jobs with a diff before every write, run history, and a fleet view.";
 
@@ -32,7 +32,8 @@ describe("client crawl files", () => {
 
   it("index.html has a canonical URL and a description", () => {
     const html = fs.readFileSync(path.resolve("client/index.html"), "utf8");
-    expect(html).toContain('<link rel="canonical" href="https://pitasker.piapps.dev/" />');
+    expect(html).toContain('<link rel="canonical" href="https://pitasker.dev/" />');
+    expect(html).toContain('<meta property="og:url" content="https://pitasker.dev/" />');
     expect(html).toContain(`<meta name="description" content="${DESCRIPTION}" />`);
   });
 });

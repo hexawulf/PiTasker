@@ -184,7 +184,7 @@ describe("request guards", () => {
 describe("originAllowed", () => {
   it("accepts the Host, X-Forwarded-Host or the configured public origin", async () => {
     const { originAllowed } = await import("../../server/middleware/sameOrigin");
-    expect(originAllowed("https://pitasker.piapps.dev", { headers: { host: "127.0.0.1:5007" } })).toBe(true); // nginx without Host
+    expect(originAllowed("https://pitasker.dev", { headers: { host: "127.0.0.1:5007" } })).toBe(true); // nginx without Host
     expect(originAllowed("https://a.example", { headers: { host: "127.0.0.1:5007", "x-forwarded-host": "a.example" } })).toBe(true);
     expect(originAllowed("http://localhost:5027", { headers: { host: "localhost:5027" } })).toBe(true);
     expect(originAllowed("https://evil.example", { headers: { host: "127.0.0.1:5007" } })).toBe(false);

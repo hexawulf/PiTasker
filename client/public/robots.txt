@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://pitasker.piapps.dev/sitemap.xml
+Sitemap: https://pitasker.dev/sitemap.xml
