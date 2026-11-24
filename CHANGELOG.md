@@ -3,6 +3,15 @@
 All notable changes to PiTasker. Versions follow semver per phase
 (docs/plans/2.0.md): 2.0.0 = P1 + P2.
 
+## [2.4.2] — 2026-11-24 (own domain: pitasker.dev)
+
+### Changed
+- **PiTasker has its own domain: [pitasker.dev](https://pitasker.dev/).** The canonical URL, `og:url`, sitemap, robots.txt `Sitemap` line and README link point there (#41). `pitasker.piapps.dev` now redirects to it with a 301.
+- The default public origin for the same-origin check (`PITASKER_ORIGIN` when unset) is `https://pitasker.dev` (#41).
+
+### Added
+- **About shows the website**: a "Website" entry links to pitasker.dev, above the GitHub repo. The About e2e test checks the link.
+
 ## [2.4.1] — 2026-11-24 (log retention: config + tests)
 
 ### Changed
